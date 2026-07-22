@@ -103,6 +103,7 @@ priority = 20
 
 The [`docs/`](docs/) directory contains in-depth architectural and technical specifications:
 
+- **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Public Edge (Server 1) vs Sovereign Core (Server 2) physical deployment topology detailing stateless public edge ingress (`platform/`) and private governance execution (`gateway/` & `executor_host/`).
 - **[`docs/EXECUTION_EXAMPLE.md`](docs/EXECUTION_EXAMPLE.md)**: Real-World Execution Flow Example detailing how `@agent Inspect the schema of the "sales" dataset.` flows through proposal, policy evaluation, human approval, grant minting, sandboxed execution, and PII egress scrubbing.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**: Architectural plane breakdown (Reasoning, Governance, Execution, Egress Scrubbing, and Trust Operations) and domain crate responsibilities.
 - **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**: Detailed workspace compilation, zero-dependency standalone control flow execution, and CLI audit verification commands.

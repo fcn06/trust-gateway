@@ -54,7 +54,7 @@ Server 2 is the private, hardened execution control plane housing the policy eng
 1. **`gateway/`**:
    - **Attribute Policy Evaluator (`crates/trust-policy`)**: Evaluates `ProposedAction` payloads against priority-ordered `policy.toml` rules.
    - **Grant Minter (`crates/trust-grants`)**: Mints short-lived (30s-60s) Ed25519-signed `ExecutionGrant` JWTs bound to canonical SHA-256 `input_hash` digests.
-   - **Human-in-the-Loop Approval Daemon**: Manages pending approvals (Portal WebAuthn and Telegram 3-minute OTP flows).
+   - **Human-in-the-Loop Approval Daemon**: Manages pending approvals via NATS KV (`action_reviews` bucket and `gateway.v1.approval.decision` topic).
 
 2. **`executor_host/`**:
    - **Unified Executor Runtime**: Dispatches execution workloads under dedicated profiles (`native-tool`, `connector`, `vp`).

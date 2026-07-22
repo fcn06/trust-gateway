@@ -45,7 +45,7 @@ sequenceDiagram
     actor Agent as 🤖 AI Agent (LLM)
     participant Gateway as 🛡️ Trust Gateway
     participant Policy as ⚖️ Policy Engine (policy.toml)
-    participant Human as 👤 Human Approver (Portal / Telegram)
+    participant Human as 👤 Human Approver (Portal / Client UI)
     participant Executor as ⚡ Executor Host
     participant API as 🌐 Target API / Tool
 
@@ -54,7 +54,7 @@ sequenceDiagram
     
     alt Require Human Approval
         Policy-->>Gateway: Result: RequireApproval
-        Gateway->>Human: Trigger WebAuthn / Telegram OTP prompt
+        Gateway->>Human: Trigger Human Approval prompt (NATS KV action_reviews)
         Human-->>Gateway: Approve Action
     else Auto-Approved
         Policy-->>Gateway: Result: Allow

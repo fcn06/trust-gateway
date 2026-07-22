@@ -17,9 +17,17 @@
 
 > **"Agents propose. Gateway decides. Executors verify."**
 
-The system enforces a 5-step zero-trust execution control flow:
+The architecture maps the 5 execution steps directly into 3 core pillars:
 
-$$\text{Agent Intent (ProposedAction)} \longrightarrow \text{Policy Engine} \longrightarrow \text{ExecutionGrant JWT} \longrightarrow \text{Executor (verify input-hash)} \longrightarrow \text{Sanitized Result (PII Filter)}$$
+| Core Pillar | Step | Phase | Mechanism & Description |
+| :--- | :---: | :--- | :--- |
+| 🤖 **1. Agents Propose** | **Step 1** | **Action Proposal** | AI Agent submits a `ProposedAction` payload over NATS without direct API access. |
+| 🛡️ **2. Gateway Decides** | **Step 2**<br/>**Step 3** | **Policy Evaluation**<br/>**Grant Issuance** | Evaluates rules against `policy.toml` (and human approval if required).<br/>Mints a short-lived Ed25519 `ExecutionGrant` JWT bound to `input_hash`. |
+| ⚡ **3. Executors Verify** | **Step 4**<br/>**Step 5** | **Grant Verification**<br/>**Egress Scrubbing** | `executor_host` verifies Ed25519 signature, SHA-256 `input_hash`, & single-use nonce.<br/>Applies PII/secret scrubbing to output before returning result. |
+
+<br/>
+
+### 📐 Physical Boundaries & Component Split
 
 ```
                    ┌──────────────────────────────────────┐
@@ -46,6 +54,12 @@ $$\text{Agent Intent (ProposedAction)} \longrightarrow \text{Policy Engine} \lon
                    │              SAAS / API              │
                    └──────────────────────────────────────┘
 ```
+
+<br/>
+
+### 📊 End-to-End Sequence Diagram
+
+The sequence diagram below details the exact interaction flow between the Reasoning Runtime, Governance Gateway, Policy Engine, Executor Host, and Target API:
 
 ```mermaid
 sequenceDiagram

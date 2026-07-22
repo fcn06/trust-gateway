@@ -492,7 +492,8 @@ pub async fn discover_mcp_tools(
         sse_uri = format!("{}/sse", sse_uri);
     }
 
-    let transport = ssi_mcp_runtime::mcp_client::transport::create_transport(sse_uri, None, client);
+    let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
+    let transport = rmcp::transport::StreamableHttpClientTransport::with_client(client, config);
 
     let client_info = rmcp::model::InitializeRequestParams::new(
         rmcp::model::ClientCapabilities::default(),

@@ -96,10 +96,6 @@ async fn main() -> Result<()> {
         "native-tool" | "native-skill" => {
             Arc::new(native_tools::NativeToolExecutor::new(&args.native_tools_dir, nats.clone())?)
         }
-        #[cfg(feature = "professional")]
-        "sandboxed-skill" => {
-            Arc::new(host_adapters::skills::executor::SandboxedSkillExecutor::new(&args.native_tools_dir, nats.clone())?)
-        }
         "connector" => {
             Arc::new(connectors::ConnectorExecutor::new(nats.clone()).await?)
         }

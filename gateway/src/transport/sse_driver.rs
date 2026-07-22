@@ -96,11 +96,8 @@ impl McpTransport for SseMcpDriver {
         }
 
         // Create a new MCP client session for this invocation.
-        let transport = ssi_mcp_runtime::mcp_client::transport::create_transport(
-            sse_uri,
-            None,
-            self.http_client.clone(),
-        );
+        let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
+        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(self.http_client.clone(), config);
 
         let client_info = rmcp::model::InitializeRequestParams::new(
             rmcp::model::ClientCapabilities::default(),
@@ -217,11 +214,8 @@ impl SseMcpDriver {
             sse_uri = format!("{}/sse", sse_uri);
         }
 
-        let transport = ssi_mcp_runtime::mcp_client::transport::create_transport(
-            sse_uri,
-            None,
-            self.http_client.clone(),
-        );
+        let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
+        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(self.http_client.clone(), config);
 
         let client_info = rmcp::model::InitializeRequestParams::new(
             rmcp::model::ClientCapabilities::default(),

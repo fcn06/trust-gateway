@@ -531,18 +531,6 @@ async fn main() -> Result<()> {
     // Build shared gateway state
     let did_web_cache = js.get_key_value("did_web_cache").await.ok();
 
-    #[cfg(feature = "professional")]
-    let tool_listing_overlay: Arc<dyn trust_core::ports::ToolListingOverlay> = {
-        if std::env::var("PROFESSIONAL_EDITION").unwrap_or_default() == "true" {
-            tracing::info!("🚀 Professional Edition Environment detected! Injecting stateful ToolListingOverlay...");
-            Arc::new(professional_core::ProfessionalToolListingOverlay::new(js.clone()))
-        } else {
-            tracing::info!("ℹ️ Community Mode active. Using StatelessToolListingOverlay.");
-            Arc::new(trust_core::ports::StatelessToolListingOverlay)
-        }
-    };
-
-    #[cfg(not(feature = "professional"))]
     let tool_listing_overlay: Arc<dyn trust_core::ports::ToolListingOverlay> = Arc::new(trust_core::ports::StatelessToolListingOverlay);
 
     let allowed_origins: Vec<String> = args

@@ -26,8 +26,3 @@ urlencoding = "2.1"
 trust_core = { path = "../shared_libs/trust_core" }
 identity_context = { path = "../shared_libs/identity_context" }
 trust_auth = { path = "../shared_libs/trust_auth" }
-host_adapters = { path = "../../sovereign-agent-runtime/host_adapters", optional = true }
-
-[features]
-default = []
-professional = ["dep:host_adapters"]

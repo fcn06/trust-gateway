@@ -1,5 +1,12 @@
 # 🛡️ Trust Gateway
 
+[![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
+[![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)
+[![MCP](https://img.shields.io/badge/MCP-SSE%20%2B%20Streamable-purple)](https://modelcontextprotocol.io)
+[![Quick Start](https://img.shields.io/badge/Quick%20Start-3%20commands-brightgreen)](#quickstart-wire-claude-in-3-lines)
+
+
 > **Zero-Trust Governance & Execution Control Plane for Autonomous AI Agents**
 
 `trust-gateway` is an open-source, technology-neutral execution authorization engine. It decouples an AI Agent's **intent to act** from the **authority to execute mutations** against real-world APIs, SaaS tools, and local execution environments.
@@ -8,9 +15,11 @@
 
 ## 🌟 Core Architecture
 
+> **"Agents propose. Gateway decides. Executors verify."**
+
 The system enforces a 5-step zero-trust execution control flow:
 
-$$\text{Agent Intent (ProposedAction)} \longrightarrow \text{Policy Engine} \longrightarrow \text{ExecutionGrant JWT} \longrightarrow \text{Executor (verify input\_hash)} \longrightarrow \text{Sanitized Result (PII Filter)}$$
+$$\text{Agent Intent (ProposedAction)} \longrightarrow \text{Policy Engine} \longrightarrow \text{ExecutionGrant JWT} \longrightarrow \text{Executor (verify input-hash)} \longrightarrow \text{Sanitized Result (PII Filter)}$$
 
 ```
                    ┌──────────────────────────────────────┐

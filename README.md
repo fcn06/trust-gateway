@@ -163,11 +163,9 @@ The [`docs/`](docs/) directory contains in-depth architectural and technical spe
   - `tenant_context`: Multi-tenant credentials schemas and configuration metadata.
 - **`shared_libs/`**: Facade libraries re-exporting domain crates (`trust_core`, `trust_policy`, `trust_auth`, `identity_context`, `community_adapters`, `ssi_crypto`).
 - **`connector_mcp_server/`**: Standalone HTTP OAuth2 callback redirect server (port 3050).
-- **`vp_mcp_server/`**: VP MCP server resolving decentralized credentials (port 3051).
 
 ### Tools, Testing & Specifications
 - **`native_tools/`**: Sandboxed shell and python execution scripts (`inspect_schema`, `compute_statistics`, `detect_anomalies`, `generate_markdown`, `join_datasets`, `sample_rows`, `claw_weather`, etc.).
-- **`native_tool_executor/`**: Legacy standalone tool executor crate (deprecated; execution is handled by `executor_host --profile native-tool`).
 - **`verifier/`**: Zero-dependency standalone Ed25519 execution grant verification crate.
 - **`policy-sdk/`**: Policy rules parser and validation SDK.
 - **`trust_ops/`**: Operational utilities and administrative tools.

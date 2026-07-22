@@ -4,8 +4,6 @@ members = [
     "gateway",
     "executor_host",
     "connector_mcp_server",
-    "vp_mcp_server",
-    "native_tool_executor",
     "verifier",
     "conformance",
     "policy-sdk",

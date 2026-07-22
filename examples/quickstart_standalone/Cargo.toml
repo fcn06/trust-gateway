@@ -1,0 +1,15 @@
+[package]
+name = "quickstart-standalone"
+version = "0.1.0"
+edition = "2021"
+description = "Standalone quickstart example demonstrating the trust-gateway 5-step control flow"
+
+[dependencies]
+trust-model = { path = "../../crates/trust-model" }
+trust-policy = { path = "../../crates/trust-policy" }
+trust-grants = { path = "../../crates/trust-grants" }
+trust-executor-sdk = { path = "../../crates/trust-executor-sdk" }
+trust-reference-executor = { path = "../../crates/trust-reference-executor" }
+tokio = { version = "1.0", features = ["full"] }
+serde_json = "1.0"
+chrono = "0.4"

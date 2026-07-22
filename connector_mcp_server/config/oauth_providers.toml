@@ -1,0 +1,17 @@
+[[providers]]
+id = "google"
+display_name = "Google Workspace"
+auth_url = "https://accounts.google.com/o/oauth2/v2/auth"
+token_url = "https://oauth2.googleapis.com/token"
+scopes = ["https://www.googleapis.com/auth/calendar.events"]
+client_id_env = "GOOGLE_CLIENT_ID"
+client_secret_env = "GOOGLE_CLIENT_SECRET"
+
+[[providers]]
+id = "stripe"
+display_name = "Stripe Payments"
+auth_url = "https://connect.stripe.com/oauth/authorize"
+token_url = "https://connect.stripe.com/oauth/token"
+scopes = ["read_write"]
+client_id_env = "STRIPE_CLIENT_ID"
+client_secret_env = "STRIPE_CLIENT_SECRET"

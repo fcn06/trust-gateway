@@ -1,0 +1,13 @@
+[package]
+name = "conformance"
+version = "0.1.0"
+edition = "2021"
+description = "Conformance test suite runner for Open Execution Authorization Protocol"
+
+[dependencies]
+trust_verifier = { path = "../verifier" }
+trust_core = { path = "../shared_libs/trust_core" }
+serde_json = "1.0"
+anyhow = "1.0"
+chrono = "0.4"
+

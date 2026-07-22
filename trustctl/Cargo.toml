@@ -1,0 +1,12 @@
+[package]
+name = "trustctl"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for offline audit verification, policy replay, and grant inspection"
+
+[dependencies]
+trust_verifier = { path = "../verifier" }
+policy_sdk = { path = "../policy-sdk" }
+trust_ops = { path = "../trust_ops" }
+serde_json = "1.0"
+anyhow = "1.0"

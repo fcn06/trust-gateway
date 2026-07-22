@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionGrant",
+  "description": "Open Execution Authorization Grant Protocol Schema",
+  "type": "object",
+  "properties": {
+    "grant_id": {
+      "type": "string",
+      "description": "Unique grant identifier (JTI)"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant scope identifier"
+    },
+    "subject_id": {
+      "type": "string",
+      "description": "Resource owner / User identity (DID or WebAuthn subject)"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Requesting agent identity (DID or agent identifier)"
+    },
+    "executor_id": {
+      "type": "string",
+      "description": "Target executor identity"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Authorized logical tool name"
+    },
+    "tool_version": {
+      "type": "string",
+      "description": "Authorized tool version tag or digest"
+    },
+    "input_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of canonical JSON input arguments"
+    },
+    "policy_hash": {
+      "type": "string",
+      "description": "SHA-256 digest of evaluated policy rules"
+    },
+    "registry_hash": {
+      "type": "string",
+      "description": "SHA-256 digest of signed tool manifest"
+    },
+    "clearance": {
+      "type": "string",
+      "enum": ["auto_approved", "human_approved", "elevated_approval", "proof_verified"]
+    },
+    "exp": {
+      "type": "integer",
+      "description": "Unix timestamp (seconds) when this grant expires"
+    },
+    "delegation": {
+      "type": "object",
+      "properties": {
+        "delegator": { "type": "string" },
+        "delegate": { "type": "string" },
+        "delegation_depth": { "type": "integer" },
+        "allowed_tools": { "type": "array", "items": { "type": "string" } },
+        "allowed_resources": { "type": "array", "items": { "type": "string" } },
+        "valid_until": { "type": "integer" },
+        "purpose": { "type": "string" }
+      },
+      "required": ["delegator", "delegate", "delegation_depth", "valid_until"]
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "max_actions": { "type": "integer" },
+        "max_duration_seconds": { "type": "integer" },
+        "max_external_calls": { "type": "integer" }
+      }
+    }
+  },
+  "required": [
+    "grant_id",
+    "tenant_id",
+    "subject_id",
+    "agent_id",
+    "tool_name",
+    "input_hash",
+    "clearance",
+    "exp"
+  ]
+}

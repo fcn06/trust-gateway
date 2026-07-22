@@ -1,0 +1,12 @@
+[package]
+name = "trust-executor-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "SDK and pure trait abstractions for tool executors"
+
+[dependencies]
+trust-model = { path = "../trust-model" }
+trust-canonical = { path = "../trust-canonical" }
+serde_json = "1.0"
+anyhow = "1.0"
+async-trait = "0.1"

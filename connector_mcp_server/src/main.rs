@@ -1,0 +1,191 @@
+//! OAuth Connector MCP Server — tenant-scoped third-party integrations.
+//!
+//! Provides MCP tool definitions for agent-accessible OAuth services:
+//! - Google Calendar
+//! - Stripe (payments)
+//! - Shopify (orders/inventory)
+//!
+//! Each tool call passes through tenant-scoped OAuth token management,
+//! ensuring tenant isolation of credentials and API access.
+
+mod oauth;
+mod token_store;
+mod tools;
+
+use async_nats::jetstream;
+use axum::{routing, Router};
+use clap::Parser;
+use std::sync::Arc;
+
+#[derive(Parser, Debug)]
+#[command(name = "connector-mcp-server")]
+struct Cli {
+    /// NATS server URL
+    #[arg(long, env = "NATS_URL", default_value = "nats://127.0.0.1:4222")]
+    nats_url: String,
+
+    /// Listen address
+    #[arg(long, env = "CONNECTOR_LISTEN", default_value = "0.0.0.0:3050")]
+    listen: String,
+
+    /// Google OAuth client ID
+    #[arg(long, env = "GOOGLE_CLIENT_ID", default_value = "")]
+    google_client_id: String,
+
+    /// Google OAuth client secret
+    #[arg(long, env = "GOOGLE_CLIENT_SECRET", default_value = "")]
+    google_client_secret: String,
+}
+
+pub struct AppState {
+    pub js: jetstream::Context,
+    pub nats: async_nats::Client,
+    pub token_store: token_store::TokenStore,
+    pub http_client: reqwest::Client,
+    /// Grant validator for ExecutionGrant JWTs from the Trust Gateway.
+    /// Initialized from GRANT_SIGNING_SECRET (HMAC) or GRANT_ED25519_PUB_PEM (Ed25519).
+    pub grant_validator: Option<tools::GrantValidator>,
+    pub providers: std::collections::HashMap<String, trust_core::oauth_token::OAuthProviderConfig>,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    dotenvy::dotenv().ok();
+
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .init();
+
+    let cli = Cli::parse();
+    tracing::info!("🔌 Connector MCP Server starting...");
+
+    let mut nats_options = async_nats::ConnectOptions::new();
+    if let Some(seed) = identity_context::load_secret("NATS_NKEY_SEED") {
+        nats_options = async_nats::ConnectOptions::with_nkey(seed.expose_secret().to_string());
+    }
+    let nats = async_nats::connect_with_options(&cli.nats_url, nats_options).await?;
+    let js = jetstream::new(nats.clone());
+
+    let token_store = token_store::TokenStore::new(js.clone()).await?;
+
+    let http_client = reqwest::Client::builder()
+        .pool_max_idle_per_host(10)
+        .timeout(std::time::Duration::from_secs(30))
+        .build()?;
+
+    // Initialize GrantValidator from environment
+    // Priority: Ed25519 PEM inline → Ed25519 PEM file → HMAC secret → JWT_SECRET (legacy)
+    let grant_validator = if let Ok(pem) = std::env::var("GRANT_ED25519_PUB_PEM") {
+        // Option 1: Inline PEM content in env var
+        match tools::GrantValidator::from_ed25519_pem(&pem) {
+            Ok(v) => {
+                tracing::info!("✅ Grant validation: Ed25519 (inline PEM)");
+                Some(v)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "⚠️ Failed to load Ed25519 public key from GRANT_ED25519_PUB_PEM: {}",
+                    e
+                );
+                None
+            }
+        }
+    } else if let Ok(key_path) = std::env::var("GRANT_VERIFY_KEY_PATH") {
+        // Option 2: Ed25519 public key file path (matches native_skill_executor pattern)
+        match std::fs::read_to_string(&key_path) {
+            Ok(pem) => match tools::GrantValidator::from_ed25519_pem(pem.trim()) {
+                Ok(v) => {
+                    tracing::info!("✅ Grant validation: Ed25519 (file: {})", key_path);
+                    Some(v)
+                }
+                Err(e) => {
+                    tracing::warn!("⚠️ Failed to parse Ed25519 key from '{}': {}", key_path, e);
+                    None
+                }
+            },
+            Err(e) => {
+                tracing::warn!("⚠️ Cannot read GRANT_VERIFY_KEY_PATH '{}': {}", key_path, e);
+                None
+            }
+        }
+    } else if let Some(secret) = identity_context::load_secret("GRANT_SIGNING_SECRET") {
+        tracing::info!("✅ Grant validation: HMAC-HS256 (GRANT_SIGNING_SECRET)");
+        Some(tools::GrantValidator::from_hmac_secret(secret.expose_secret()))
+    } else if let Some(secret) = identity_context::load_secret("JWT_SECRET") {
+        // Legacy fallback: shared JWT_SECRET used by trust_gateway for HMAC signing
+        tracing::info!("✅ Grant validation: HMAC-HS256 (JWT_SECRET legacy fallback)");
+        Some(tools::GrantValidator::from_hmac_secret(secret.expose_secret()))
+    } else {
+        tracing::warn!("⚠️ No grant signing key configured — ExecutionGrant validation disabled");
+        None
+    };
+
+    if !cli.google_client_id.is_empty() {
+        std::env::set_var("GOOGLE_CLIENT_ID", &cli.google_client_id);
+    }
+    if !cli.google_client_secret.is_empty() {
+        std::env::set_var("GOOGLE_CLIENT_SECRET", &cli.google_client_secret);
+    }
+
+    // Load OAuth providers configuration
+    let config_path = std::env::var("OAUTH_PROVIDERS_CONFIG_PATH")
+        .unwrap_or_else(|_| "connector_mcp_server/config/oauth_providers.toml".to_string());
+
+    let providers = match trust_core::oauth_provider_config::OAuthProvidersFile::load_from_file(&config_path) {
+        Ok(file) => {
+            let map = file.to_map();
+            tracing::info!("🔑 Loaded {} OAuth providers from {}", map.len(), config_path);
+            map
+        }
+        Err(e) => {
+            tracing::warn!(
+                "⚠️ Failed to load OAuth providers from {}: {}. Standard integrations might fail.",
+                config_path,
+                e
+            );
+            std::collections::HashMap::new()
+        }
+    };
+
+    let state = Arc::new(AppState {
+        js,
+        nats,
+        token_store,
+        http_client,
+        grant_validator,
+        providers,
+    });
+
+    let cors = tower_http::cors::CorsLayer::permissive();
+
+    let app = Router::new()
+        .route("/health", routing::get(|| async { "OK" }))
+        // OAuth flow endpoints
+        .route(
+            "/oauth/{provider_id}/authorize/{tenant_id}",
+            routing::get(oauth::provider_authorize),
+        )
+        .route(
+            "/oauth/{provider_id}/callback",
+            routing::get(oauth::provider_callback),
+        )
+        .route(
+            "/oauth/status/{tenant_id}",
+            routing::get(oauth::integration_status),
+        )
+        // MCP tool endpoints (called by ssi_agent via NATS bridge)
+        .route("/tools/list", routing::get(tools::list_tools))
+        .route("/tools/execute", routing::post(tools::execute_tool))
+        .layer(cors)
+        .with_state(state);
+
+    let addr: std::net::SocketAddr = cli.listen.parse()?;
+    tracing::info!("🚀 Connector MCP Server listening on {}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}

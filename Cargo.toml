@@ -1,0 +1,24 @@
+[workspace]
+resolver = "2"
+members = [
+    "gateway",
+    "executor_host",
+    "connector_mcp_server",
+    "vp_mcp_server",
+    "native_tool_executor",
+    "verifier",
+    "conformance",
+    "policy-sdk",
+    "trust_ops",
+    "trustctl",
+    "shared_libs/*",
+    "crates/*",
+    "adapters/*",
+    "examples/quickstart_standalone",
+    "platform/tenant_registry",
+
+
+    "platform/global_domain/public_gateway",
+    "platform/tenant_context",
+]
+

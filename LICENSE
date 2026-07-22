@@ -1,0 +1,40 @@
+Business Source License 1.1
+
+Parameters:
+
+Licensor:             Lianxi.io
+Licensed Work:        Trust Gateway (specifically the trust_gateway and executor_host control plane binaries and their source files)
+Additional Use Grant: None.
+Change Date:          July 15, 2029
+Change License:       Apache License, Version 2.0
+
+Terms:
+
+1. The Licensor hereby grants you the right to copy and modify the Licensed
+   Work and to distribute the Licensed Work or your modifications, subject
+   to the terms of this License.
+
+2. You may use the Licensed Work for any purpose that does not include
+   offering the Licensed Work as a commercial managed service (Software-as-a-Service,
+   Database-as-a-Service, or any similar managed platform offering where
+   users pay to interact with or have the Licensed Work hosted for them).
+
+3. Your right to use the Licensed Work under this License is effective until
+   the Change Date. On the Change Date, the Licensed Work becomes licensed
+   under the Change License, and this License ceases to apply.
+
+4. If you violate any terms of this License, your rights under this License
+   terminate automatically.
+
+5. This License does not grant you any right to use any trademarks, service
+   marks, or product names of the Licensor.
+
+6. Disclaimer of Warranty. THE LICENSED WORK IS PROVIDED "AS IS" WITHOUT
+   WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+   THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+   AND NON-INFRINGEMENT.
+
+7. Limitation of Liability. IN NO EVENT SHALL THE LICENSOR OR CONTRIBUTORS
+   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+   OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+   WITH THE LICENSED WORK.

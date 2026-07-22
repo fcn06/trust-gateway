@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════
+#  Trust Gateway — Git Ignore Rules
+# ═══════════════════════════════════════════════════════
+
+# ── Build & Compilation Artifacts ────────────────────
+/target/
+**/target/
+**/*.rs.bk
+
+# ── Cryptographic Keys & Secrets (Secure-by-Default) ─
+**/*.key
+**/*.pem
+**/*.nkey
+**/*.pub
+**/server.keys
+.keys/
+.nkeys/
+secrets/
+secrets.conf
+secrets_*.conf
+
+# ── Environment & Local Configuration Overrides ─────
+.env
+.env.local
+.env.*.local
+*.env
+config/policy.local.toml
+config/secrets.toml
+
+# ── Runtime State, Logs & Storage ────────────────────
+**/*.log
+logs/
+.nats_data/
+*.db
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+audit.jsonl
+**/manifest.json
+
+# ── IDE & OS Files ───────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+scratch/
+tmp/

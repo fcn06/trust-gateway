@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    container_name: trust-gateway-nats
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.gateway
+    container_name: trust-gateway-core
+    environment:
+      - NATS_URL=nats://nats:4222
+      - POLICY_PATH=/etc/trust-gateway/policy.toml
+    ports:
+      - "3060:3060"
+    depends_on:
+      - nats
+
+  executor-host:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.executor
+    container_name: trust-executor-host
+    environment:
+      - NATS_URL=nats://nats:4222
+      - EXECUTOR_PROFILE=native-tool
+    depends_on:
+      - nats

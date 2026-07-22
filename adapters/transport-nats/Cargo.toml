@@ -1,0 +1,14 @@
+[package]
+name = "transport-nats"
+version = "0.1.0"
+edition = "2021"
+description = "NATS transport adapter for Open Execution Authorization Protocol"
+
+[dependencies]
+trust-model = { path = "../../crates/trust-model" }
+async-nats = "0.38"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+anyhow = "1.0"
+tracing = "0.1"

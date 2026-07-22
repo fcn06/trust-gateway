@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecutionGrant",
+  "description": "Short-lived, action-specific execution grant token claims.",
+  "type": "object",
+  "required": [
+    "clearance",
+    "expires_at",
+    "input_hash",
+    "tenant_id"
+  ],
+  "properties": {
+    "action_id": {
+      "description": "Unique action ID.",
+      "default": "",
+      "type": "string"
+    },
+    "allowed_action": {
+      "description": "Exact action name authorized (e.g. \"google.calendar.event.create\").",
+      "default": "",
+      "type": "string"
+    },
+    "budget": {
+      "description": "Execution budget grant bounds.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ExecutionBudget"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "clearance": {
+      "description": "Clearance level obtained.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GrantClearance"
+        }
+      ]
+    },
+    "delegation": {
+      "description": "Bounded delegation model metadata.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/DelegationChain"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "executor_id": {
+      "description": "Designated executor identity.",
+      "default": "",
+      "type": "string"
+    },
+    "expires_at": {
+      "description": "Expiry timestamp (Unix epoch seconds).",
+      "type": "integer",
+      "format": "int64"
+    },
+    "grant_id": {
+      "description": "Unique grant identifier / JTI.",
+      "default": "",
+      "type": "string"
+    },
+    "input_hash": {
+      "description": "SHA-256 hash of canonical JSON arguments.",
+      "type": "string"
+    },
+    "kid": {
+      "description": "Key ID of the signing key.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "owner_did": {
+      "description": "Subject / Resource Owner identity (DID or user ID).",
+      "default": "",
+      "type": "string"
+    },
+    "policy_hash": {
+      "description": "SHA-256 digest of policy evaluated.",
+      "default": "",
+      "type": "string"
+    },
+    "registry_hash": {
+      "description": "SHA-256 digest of signed tool manifest.",
+      "default": "",
+      "type": "string"
+    },
+    "requester_did": {
+      "description": "Requester / Agent identity (DID or agent ID).",
+      "default": "",
+      "type": "string"
+    },
+    "tenant_id": {
+      "description": "Tenant scope.",
+      "type": "string"
+    },
+    "tool_version": {
+      "description": "Authorized tool version digest/tag.",
+      "default": "1.0.0",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "DelegationChain": {
+      "description": "Bounded Delegation Chain metadata",
+      "type": "object",
+      "required": [
+        "delegate",
+        "delegation_depth",
+        "delegator",
+        "valid_until"
+      ],
+      "properties": {
+        "allowed_resources": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowed_tools": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "delegate": {
+          "type": "string"
+        },
+        "delegation_depth": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "delegator": {
+          "type": "string"
+        },
+        "max_cost": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "on_behalf_of": {
+          "default": "",
+          "type": "string"
+        },
+        "purpose": {
+          "default": "",
+          "type": "string"
+        },
+        "valid_until": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "ExecutionBudget": {
+      "description": "Execution budget grant rules",
+      "type": "object",
+      "properties": {
+        "max_actions": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_duration_seconds": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_external_calls": {
+          "default": 0,
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_financial_impact": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FinancialImpact"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "FinancialImpact": {
+      "description": "Financial impact budget limit",
+      "type": "object",
+      "required": [
+        "amount",
+        "currency"
+      ],
+      "properties": {
+        "amount": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "currency": {
+          "type": "string"
+        }
+      }
+    },
+    "GrantClearance": {
+      "description": "How an execution grant was obtained — tracks provenance of authorization decision.",
+      "oneOf": [
+        {
+          "description": "Tier 0: policy auto-allowed the action.",
+          "type": "string",
+          "enum": [
+            "auto_approved"
+          ]
+        },
+        {
+          "description": "Tier 1: human clicked \"approve\" in the portal.",
+          "type": "string",
+          "enum": [
+            "human_approved"
+          ]
+        },
+        {
+          "description": "Tier 2: human re-authenticated before approving.",
+          "type": "string",
+          "enum": [
+            "elevated_approval"
+          ]
+        },
+        {
+          "description": "Tier 3: human presented a verifiable credential (OID4VP).",
+          "type": "string",
+          "enum": [
+            "proof_verified"
+          ]
+        }
+      ]
+    }
+  }
+}

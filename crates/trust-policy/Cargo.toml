@@ -1,0 +1,11 @@
+[package]
+name = "trust-policy"
+version = "0.1.0"
+edition = "2021"
+description = "Attribute-based policy evaluator engine"
+
+[dependencies]
+trust-model = { path = "../trust-model" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"

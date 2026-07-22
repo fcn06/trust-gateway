@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActionProposal",
+  "description": "Agent Action Proposal Protocol Schema",
+  "type": "object",
+  "properties": {
+    "proposal_id": { "type": "string" },
+    "tenant_id": { "type": "string" },
+    "agent_id": { "type": "string" },
+    "tool_name": { "type": "string" },
+    "arguments": { "type": "object" },
+    "input_hash": { "type": "string" },
+    "context": { "type": "object" },
+    "timestamp": { "type": "integer" }
+  },
+  "required": ["proposal_id", "tenant_id", "agent_id", "tool_name", "arguments", "input_hash", "timestamp"]
+}

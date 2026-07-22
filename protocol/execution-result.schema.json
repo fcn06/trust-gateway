@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionResult",
+  "description": "Executor Execution Receipt and Result Schema",
+  "type": "object",
+  "properties": {
+    "execution_id": { "type": "string" },
+    "grant_id": { "type": "string" },
+    "executor_id": { "type": "string" },
+    "status": { "type": "string", "enum": ["success", "failed", "denied", "budget_exceeded"] },
+    "output": { "type": ["object", "string", "null"] },
+    "error": { "type": ["string", "null"] },
+    "duration_ms": { "type": "integer" },
+    "timestamp": { "type": "integer" }
+  },
+  "required": ["execution_id", "grant_id", "executor_id", "status", "timestamp"]
+}

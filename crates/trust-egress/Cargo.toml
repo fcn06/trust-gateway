@@ -1,0 +1,11 @@
+[package]
+name = "trust-egress"
+version = "0.1.0"
+edition = "2021"
+description = "Structured PII classifier and pre-execution data egress bounds"
+
+[dependencies]
+trust-model = { path = "../trust-model" }
+regex = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

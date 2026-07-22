@@ -47,6 +47,28 @@ $$\text{Agent Intent (ProposedAction)} \longrightarrow \text{Policy Engine} \lon
                    └──────────────────────────────────────┘
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Agent as 🤖 AI Agent
+    participant Gateway as 🛡️ Trust Gateway
+    participant Policy as ⚖️ Policy Engine
+    participant Executor as ⚡ Executor Host
+    participant API as 🌐 Target API
+
+    Agent->>Gateway: Propose Action (tool, args)
+    Gateway->>Policy: Check policy.toml
+    Policy-->>Gateway: Approved
+    Gateway->>Gateway: Mint Ed25519 ExecutionGrant JWT
+    Gateway-->>Agent: ExecutionGrant JWT
+    Agent->>Executor: Execute (Grant + Args)
+    Executor->>Executor: Verify Ed25519 & SHA-256(input_hash)
+    Executor->>API: Execute Tool
+    API-->>Executor: Raw Output
+    Executor->>Executor: Scrub PII / Secrets
+    Executor-->>Agent: Sanitized Result
+```
+
 ---
 
 ## ⚡ Quickstart (Under 1 Minute)
@@ -103,6 +125,7 @@ priority = 20
 
 The [`docs/`](docs/) directory contains in-depth architectural and technical specifications:
 
+- **[`docs/VISUAL_GUIDE.md`](docs/VISUAL_GUIDE.md)**: 🎨 **5-Minute Visual Guide & Concepts**: Problem statement, Mermaid architecture diagrams, concept breakdown, and Rosetta Stone component mapping.
 - **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Public Edge (Server 1) vs Sovereign Core (Server 2) physical deployment topology detailing stateless public edge ingress (`platform/`) and private governance execution (`gateway/` & `executor_host/`).
 - **[`docs/EXECUTION_EXAMPLE.md`](docs/EXECUTION_EXAMPLE.md)**: Real-World Execution Flow Example detailing how `@agent Inspect the schema of the "sales" dataset.` flows through proposal, policy evaluation, human approval, grant minting, sandboxed execution, and PII egress scrubbing.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**: Architectural plane breakdown (Reasoning, Governance, Execution, Egress Scrubbing, and Trust Operations) and domain crate responsibilities.

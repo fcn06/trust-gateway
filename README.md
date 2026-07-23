@@ -139,14 +139,15 @@ priority = 20
 
 The [`docs/`](docs/) directory contains in-depth architectural and technical specifications:
 
+- **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**: Detailed workspace compilation, zero-dependency standalone control flow execution, and CLI audit verification commands.
 - **[`docs/VISUAL_GUIDE.md`](docs/VISUAL_GUIDE.md)**: 🎨 **5-Minute Visual Guide & Concepts**: Problem statement, Mermaid architecture diagrams, concept breakdown, and Rosetta Stone component mapping.
-- **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Public Edge (Server 1) vs Sovereign Core (Server 2) physical deployment topology detailing stateless public edge ingress (`platform/`) and private governance execution (`gateway/` & `executor_host/`).
 - **[`docs/EXECUTION_EXAMPLE.md`](docs/EXECUTION_EXAMPLE.md)**: Real-World Execution Flow Example detailing how `@agent Inspect the schema of the "sales" dataset.` flows through proposal, policy evaluation, human approval, grant minting, sandboxed execution, and PII egress scrubbing.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**: Architectural plane breakdown framed around the 3 core pillars (Agents Propose, Gateway Decides, Executors Verify) and domain crate responsibilities.
-- **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**: Detailed workspace compilation, zero-dependency standalone control flow execution, and CLI audit verification commands.
+- **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Public Edge (Server 1) vs Sovereign Core (Server 2) physical deployment topology detailing stateless public edge ingress (`platform/`) and private governance execution (`gateway/` & `executor_host/`).
 - **[`docs/PROTOCOL_SPEC.md`](docs/PROTOCOL_SPEC.md)**: Open Execution Authorization Protocol specification detailing domain model contracts (`crates/trust-model`), RFC 8785 JSON canonicalization & SHA-256 `input_hash` calculation (`crates/trust-canonical`), and schema contracts.
 - **[`docs/NATS_TOPOLOGY.md`](docs/NATS_TOPOLOGY.md)**: Network topology, NATS subject routing matrix, leaf node peering between Public Edge and Sovereign Core, and JetStream storage key rules.
 - **[`docs/security-guarantees.md`](docs/security-guarantees.md)**: Security Guarantees classification matrix detailing Cryptographic, Deterministic, and Technical security properties mapped to their underlying domain modules.
+- **[`docs/EXPLAINED_FOR_KIDS.md`](docs/EXPLAINED_FOR_KIDS.md)**: 🎈 **Trust Gateway Explained for a 10-Year-Old**: A fun, easy-to-understand breakdown of AI agent safety, golden tickets, policy rules, and execution guards using simple real-world analogies.
 
 ---
 

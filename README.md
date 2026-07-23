@@ -101,13 +101,21 @@ sequenceDiagram
 
 ### 📋 Prerequisites
 
-To build and run `trust-gateway`:
-
+#### 1. Required for Standalone Quickstart & Building
 - **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.75+**):
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
-- **System Build Dependencies**: C compiler and SSL headers for native cryptographic dependencies (e.g. `build-essential`, `pkg-config`, `libssl-dev` on Linux, or Xcode Command Line Tools on macOS).
+- **System Build Dependencies**: C compiler and SSL development headers for native cryptography:
+  - **Linux (Ubuntu/Debian)**: `sudo apt-get install -y build-essential pkg-config libssl-dev`
+  - **macOS**: `xcode-select --install`
+
+#### 2. Required for Full Gateway Daemon & Production Runtime
+- **[NATS Server](https://docs.nats.io/running-a-nats-service/introduction/installation)** (with **JetStream** enabled): Required for distributed pub/sub routing and persistent audit logging (`gateway` & `executor_host` daemons).
+  ```bash
+  # Start local NATS server with JetStream enabled
+  nats-server -js
+  ```
 
 ---
 

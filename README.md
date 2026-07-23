@@ -11,17 +11,40 @@
 
 ---
 
-## 📡 Available API Interfaces & Transports
+## ⚡ Quickstart (Under 1 Minute)
 
-`trust-gateway` provides multiple standardized API transports for seamless integration with AI agents, governance dashboards, and executor runtimes:
+### 📋 Prerequisites
 
-| Interface / Transport | Endpoint / Channel | Protocol & Description |
-| :--- | :--- | :--- |
-| **🔌 MCP (Model Context Protocol)** | `GET /v1/mcp/sse`<br/>`POST /v1/mcp/messages` | **MCP over HTTP SSE / Streamable**: Enables AI clients (Claude Desktop, Cursor, Custom LLM Agents) to dynamically discover governed tools (`tools/list`) and submit tool calls (`tools/call`). |
-| **🌐 REST / HTTP API** | `POST /v1/actions/propose`<br/>`GET /v1/tools/list` | **Standard JSON REST API**: Direct HTTP endpoints for proposing actions, fetching tool definitions, and monitoring service health (`GET /health`). |
-| **📨 A2A / NATS Event Protocol** | `trust.v1.*.action.propose`<br/>`trust.v1.*.tools.list` | **Agent-to-Agent Pub/Sub over NATS**: High-performance, decoupled event transport for async agent proposals and real-time JetStream audit streaming. |
-| **👤 Human Approval API** | `GET /v1/approvals`<br/>`POST /v1/approvals/:id/decision` | **Human-in-the-Loop Governance**: API endpoints for administrative portals and human reviewers to list pending escalations and submit approval/denial decisions. |
-| **🔐 OAuth2 & OIDC Discovery** | `/.well-known/openid-configuration`<br/>`/.well-known/oauth-protected-resource` | **Identity & OAuth Proxy**: Standardized OpenID & OAuth2 metadata discovery endpoints for third-party connector authentication workflows. |
+#### 1. Required for Standalone Quickstart & Building
+- **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.75+**):
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  ```
+- **System Build Dependencies**: C compiler and SSL development headers for native cryptography:
+  - **Linux (Ubuntu/Debian)**: `sudo apt-get install -y build-essential pkg-config libssl-dev`
+  - **macOS**: `xcode-select --install`
+
+#### 2. Required for Full Gateway Daemon & Production Runtime
+- **[NATS Server](https://docs.nats.io/running-a-nats-service/introduction/installation)** (with **JetStream** enabled): Required for distributed pub/sub routing and persistent audit logging (`gateway` & `executor_host` daemons).
+  ```bash
+  # Start local NATS server with JetStream enabled
+  nats-server -js
+  ```
+
+---
+
+Run the zero-dependency standalone control flow example:
+
+```bash
+cd trust-gateway
+cargo run -p quickstart-standalone
+```
+
+### Running Tests
+
+```bash
+cargo test --workspace --lib
+```
 
 ---
 
@@ -93,43 +116,6 @@ sequenceDiagram
     API-->>Executor: Raw Output
     Executor->>Executor: Scrub PII / Secrets
     Executor-->>Agent: Sanitized Result
-```
-
----
-
-## ⚡ Quickstart (Under 1 Minute)
-
-### 📋 Prerequisites
-
-#### 1. Required for Standalone Quickstart & Building
-- **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.75+**):
-  ```bash
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  ```
-- **System Build Dependencies**: C compiler and SSL development headers for native cryptography:
-  - **Linux (Ubuntu/Debian)**: `sudo apt-get install -y build-essential pkg-config libssl-dev`
-  - **macOS**: `xcode-select --install`
-
-#### 2. Required for Full Gateway Daemon & Production Runtime
-- **[NATS Server](https://docs.nats.io/running-a-nats-service/introduction/installation)** (with **JetStream** enabled): Required for distributed pub/sub routing and persistent audit logging (`gateway` & `executor_host` daemons).
-  ```bash
-  # Start local NATS server with JetStream enabled
-  nats-server -js
-  ```
-
----
-
-Run the zero-dependency standalone control flow example:
-
-```bash
-cd trust-gateway
-cargo run -p quickstart-standalone
-```
-
-### Running Tests
-
-```bash
-cargo test --workspace --lib
 ```
 
 ---
@@ -227,3 +213,18 @@ The [`docs/`](docs/) directory contains in-depth architectural and technical spe
 - **`tests/`**: Integration and regression test suites.
 - **`config/`**: Deployment configuration files and policy templates (`policy.standalone.toml`).
 - **`deploy/`**: Docker Compose (`docker-compose.yml`) and systemd deployment assets.
+
+---
+
+## 📡 Available API Interfaces & Transports
+
+`trust-gateway` provides multiple standardized API transports for seamless integration with AI agents, governance dashboards, and executor runtimes:
+
+| Interface / Transport | Endpoint / Channel | Protocol & Description |
+| :--- | :--- | :--- |
+| **🔌 MCP (Model Context Protocol)** | `GET /v1/mcp/sse`<br/>`POST /v1/mcp/messages` | **MCP over HTTP SSE / Streamable**: Enables AI clients (Claude Desktop, Cursor, Custom LLM Agents) to dynamically discover governed tools (`tools/list`) and submit tool calls (`tools/call`). |
+| **🌐 REST / HTTP API** | `POST /v1/actions/propose`<br/>`GET /v1/tools/list` | **Standard JSON REST API**: Direct HTTP endpoints for proposing actions, fetching tool definitions, and monitoring service health (`GET /health`). |
+| **📨 A2A / NATS Event Protocol** | `trust.v1.*.action.propose`<br/>`trust.v1.*.tools.list` | **Agent-to-Agent Pub/Sub over NATS**: High-performance, decoupled event transport for async agent proposals and real-time JetStream audit streaming. |
+| **👤 Human Approval API** | `GET /v1/approvals`<br/>`POST /v1/approvals/:id/decision` | **Human-in-the-Loop Governance**: API endpoints for administrative portals and human reviewers to list pending escalations and submit approval/denial decisions. |
+| **🔐 OAuth2 & OIDC Discovery** | `/.well-known/openid-configuration`<br/>`/.well-known/oauth-protected-resource` | **Identity & OAuth Proxy**: Standardized OpenID & OAuth2 metadata discovery endpoints for third-party connector authentication workflows. |
+

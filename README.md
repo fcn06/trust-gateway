@@ -87,6 +87,18 @@ sequenceDiagram
 
 ## ⚡ Quickstart (Under 1 Minute)
 
+### 📋 Prerequisites
+
+To build and run `trust-gateway`:
+
+- **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.75+**):
+  ```bash
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  ```
+- **System Build Dependencies**: C compiler and SSL headers for native cryptographic dependencies (e.g. `build-essential`, `pkg-config`, `libssl-dev` on Linux, or Xcode Command Line Tools on macOS).
+
+---
+
 Run the zero-dependency standalone control flow example:
 
 ```bash

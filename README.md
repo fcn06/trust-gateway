@@ -2,9 +2,6 @@
 
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
-[![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)
-[![MCP](https://img.shields.io/badge/MCP-SSE%20%2B%20Streamable-purple)](https://modelcontextprotocol.io)
-[![Quick Start](https://img.shields.io/badge/Quick%20Start-3%20commands-brightgreen)](#quickstart-wire-claude-in-3-lines)
 
 
 > **Zero-Trust Governance & Execution Control Plane for Autonomous AI Agents**

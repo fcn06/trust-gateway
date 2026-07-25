@@ -161,9 +161,9 @@ The [`docs/`](docs/) directory contains in-depth architectural and technical spe
 - **[`docs/VISUAL_GUIDE.md`](docs/VISUAL_GUIDE.md)**: 🎨 **5-Minute Visual Guide & Concepts**: Problem statement, Mermaid architecture diagrams, concept breakdown, and Rosetta Stone component mapping.
 - **[`docs/EXECUTION_EXAMPLE.md`](docs/EXECUTION_EXAMPLE.md)**: Real-World Execution Flow Example detailing how `@agent Inspect the schema of the "sales" dataset.` flows through proposal, policy evaluation, human approval, grant minting, sandboxed execution, and PII egress scrubbing.
 - **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)**: Architectural plane breakdown framed around the 3 core pillars (Agents Propose, Gateway Decides, Executors Verify) and domain crate responsibilities.
-- **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Public Edge (Server 1) vs Sovereign Core (Server 2) physical deployment topology detailing stateless public edge ingress (`platform/`) and private governance execution (`gateway/` & `executor_host/`).
+- **[`docs/DEPLOYMENT_TOPOLOGY.md`](docs/DEPLOYMENT_TOPOLOGY.md)**: Deployment separation model contrasting a stateless public edge ingress with a private, isolated governance core (`gateway/` & `executor_host/`).
 - **[`docs/PROTOCOL_SPEC.md`](docs/PROTOCOL_SPEC.md)**: Open Execution Authorization Protocol specification detailing domain model contracts (`crates/trust-model`), RFC 8785 JSON canonicalization & SHA-256 `input_hash` calculation (`crates/trust-canonical`), and schema contracts.
-- **[`docs/NATS_TOPOLOGY.md`](docs/NATS_TOPOLOGY.md)**: Network topology, NATS subject routing matrix, leaf node peering between Public Edge and Sovereign Core, and JetStream storage key rules.
+- **[`docs/NATS_TOPOLOGY.md`](docs/NATS_TOPOLOGY.md)**: Messaging topology principles and boundary-isolation rules between the public edge and the governance core.
 - **[`docs/security-guarantees.md`](docs/security-guarantees.md)**: Security Guarantees classification matrix detailing Cryptographic, Deterministic, and Technical security properties mapped to their underlying domain modules.
 - **[`docs/EXPLAINED_FOR_KIDS.md`](docs/EXPLAINED_FOR_KIDS.md)**: 🎈 **Trust Gateway Explained for a 10-Year-Old**: A fun, easy-to-understand breakdown of AI agent safety, golden tickets, policy rules, and execution guards using simple real-world analogies.
 
@@ -194,8 +194,8 @@ The [`docs/`](docs/) directory contains in-depth architectural and technical spe
   - `global_domain/public_gateway`: Ingress edge router bridging A2A requests over NATS.
   - `tenant_registry`: Directory store mapping public DID identities to workspace tenants.
   - `tenant_context`: Multi-tenant credentials schemas and configuration metadata.
-- **`shared_libs/`**: Facade libraries re-exporting domain crates (`trust_core`, `trust_policy`, `trust_auth`, `identity_context`, `community_adapters`, `ssi_crypto`).
-- **`connector_mcp_server/`**: Standalone HTTP OAuth2 callback redirect server (port 3050).
+- **`shared_libs/`**: Facade libraries re-exporting domain crates (`trust_core`, `trust_policy`, `trust_auth`).
+- **`connector_mcp_server/`**: Standalone HTTP OAuth2 callback redirect server.
 
 ### Tools, Testing & Specifications
 - **`native_tools/`**: Sandboxed shell and python execution scripts (`inspect_schema`, `compute_statistics`, `detect_anomalies`, `generate_markdown`, `join_datasets`, `sample_rows`, `claw_weather`, etc.).

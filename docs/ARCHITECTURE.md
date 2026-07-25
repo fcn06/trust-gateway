@@ -14,7 +14,7 @@ The Trust Gateway enforces the 3-pillar zero-trust value proposition:
 ---
 
 ### 🛡️ Pillar 2: Gateway Decides (Governance & Control)
-* **Governance Plane**: The Trust Gateway evaluates request attributes against `policy.toml` (`crates/trust-policy`, `policy-sdk`). If required by policy rules, human approval is triggered via the approval daemon (`action_reviews` NATS KV).
+* **Governance Plane**: The Trust Gateway evaluates request attributes against `policy.toml` (`crates/trust-policy`, `policy-sdk`). If required by policy rules, human approval is triggered via the approval daemon, backed by a durable pending-approvals store.
 * **Grant Minting Plane**: Upon approval, the Gateway mints a short-lived Ed25519-signed `ExecutionGrant` JWT (`crates/trust-grants`), cryptographically bound to the SHA-256 `input_hash` of canonical arguments (`crates/trust-canonical`).
 * **Trust Operations Plane (`trust_ops`)**: Key lifecycle management (JWKS rotation), executor posture attestation, and hash-chained audit log reconciliation (`crates/trust-audit`).
 

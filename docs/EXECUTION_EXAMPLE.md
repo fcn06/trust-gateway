@@ -38,7 +38,7 @@ This document provides a step-by-step technical walkthrough of how an AI Agent p
 The agent receives the user prompt and constructs a standard `ProposedAction` struct (`crates/trust-model`):
 - **Action**: `"inspect_schema"`
 - **Arguments**: `{"dataset": "sales"}`
-- **Agent DID**: `"did:twin:z54afaa85d397084d7935c2fde6df5f7cd906d2c4e92181b3fc3aab4288590f5e"`
+- **Agent DID**: `"did:key:z6MkpTHR8VNsBxYWhBXiP5m4b5536Z8L5n5NfC1g55555555"`
 - **Tenant ID**: `"98b724e5-2a74-4b4c-b9b3-3e386c7bd4c8"`
 
 ### 2. Policy Engine Evaluation (`crates/trust-policy`)

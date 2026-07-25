@@ -39,14 +39,25 @@ pub enum AuthError {
 pub struct AuthResolver {
     jwt_secret: String,
     did_web_cache: Option<async_nats::jetstream::kv::Store>,
+    http_client: reqwest::Client,
 }
 
 impl AuthResolver {
     pub fn new(jwt_secret: impl Into<String>) -> Self {
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_default();
         Self {
             jwt_secret: jwt_secret.into(),
             did_web_cache: None,
+            http_client,
         }
+    }
+
+    pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client = client;
+        self
     }
 
     pub fn with_did_web_cache(mut self, cache: async_nats::jetstream::kv::Store) -> Self {
@@ -57,7 +68,7 @@ impl AuthResolver {
     /// Resolve a raw authentication input into a normalized IdentityContext.
     pub async fn resolve(&self, input: RawAuthInput) -> Result<IdentityContext, AuthError> {
         match input {
-            RawAuthInput::Jwt(token) => self.resolve_any_jwt(&token),
+            RawAuthInput::Jwt(token) => self.resolve_any_jwt(&token).await,
             RawAuthInput::VerifiablePresentation(vp) => self.resolve_vp(&vp).await,
             RawAuthInput::ApiKey(_) => Err(AuthError::UnsupportedMethod),
             RawAuthInput::OAuth2Bearer(_) => Err(AuthError::UnsupportedMethod),
@@ -128,7 +139,7 @@ impl AuthResolver {
 
     /// Resolve a standard JWT, attempting DID-based EdDSA verification first
     /// if it appears to be an SSI token, falling back to legacy HMAC.
-    fn resolve_any_jwt(&self, token: &str) -> Result<IdentityContext, AuthError> {
+    async fn resolve_any_jwt(&self, token: &str) -> Result<IdentityContext, AuthError> {
         // Peak at issuer to determine if we should try EdDSA/DID verification
         if self.is_did_signed_jwt(token) {
             match crate::did::verify_eddsa_session_jwt(token) {
@@ -152,7 +163,51 @@ impl AuthResolver {
             }
         }
 
+        // Check if OAuth2 EdDSA JWT (e.g. alg == EdDSA and iss starts with http/https)
+        if self.is_oauth2_eddsa_jwt(token) {
+            let jwks_url_override = std::env::var("B2B_JWKS_URL").ok();
+            match crate::did::verify_oauth2_eddsa_jwt(token, &self.http_client, jwks_url_override.as_deref()).await {
+                Ok(context) => return Ok(context),
+                Err(e) => {
+                    tracing::warn!("OAuth2 EdDSA verification failed: {}", e);
+                }
+            }
+        }
+
         self.resolve_hmac_jwt(token)
+    }
+
+    /// Checks if a JWT is an OAuth2 EdDSA bearer token (e.g. HTTP issuer or aud=b2b_agent)
+    fn is_oauth2_eddsa_jwt(&self, token: &str) -> bool {
+        let parts: Vec<&str> = token.split('.').collect();
+        if parts.len() != 3 { return false; }
+        
+        use base64::Engine;
+        let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        let b64_pad = base64::engine::general_purpose::URL_SAFE;
+        
+        let alg_ok = if let Ok(decoded_header) = b64.decode(parts[0]).or_else(|_| b64_pad.decode(parts[0])) {
+            if let Ok(header_json) = serde_json::from_slice::<serde_json::Value>(&decoded_header) {
+                header_json.get("alg").and_then(|v| v.as_str()) == Some("EdDSA")
+            } else { false }
+        } else { false };
+        
+        if !alg_ok { return false; }
+
+        if let Ok(decoded_payload) = b64.decode(parts[1]).or_else(|_| b64_pad.decode(parts[1])) {
+            if let Ok(payload_json) = serde_json::from_slice::<serde_json::Value>(&decoded_payload) {
+                let iss_http = payload_json.get("iss")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.starts_with("http://") || s.starts_with("https://"))
+                    .unwrap_or(false);
+                let is_b2b_aud = payload_json.get("aud")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s == "b2b_agent")
+                    .unwrap_or(false);
+                return iss_http || is_b2b_aud;
+            }
+        }
+        false
     }
 
     /// Checks if a JWT is signed by a DID using EdDSA (SSI session)

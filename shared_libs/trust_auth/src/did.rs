@@ -17,6 +17,8 @@
 use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use sha2::{Digest, Sha256};
+use identity_context::models::{IdentityContext, SourceContext};
+use crate::AuthMethod;
 
 /// Result of a successfully verified Verifiable Presentation.
 #[derive(Debug, Clone)]
@@ -306,6 +308,151 @@ pub fn verify_eddsa_session_jwt(token: &str) -> Result<identity_context::jwt::Jw
     }
 
     Ok(claims)
+}
+
+/// Verify an OAuth2 Bearer JWT signed using Ed25519 (EdDSA) via JWKS.
+///
+/// Used for B2B OAuth2 tokens issued by central identity servers.
+pub async fn verify_oauth2_eddsa_jwt(
+    token: &str,
+    client: &reqwest::Client,
+    jwks_url_override: Option<&str>,
+) -> Result<IdentityContext, VpError> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Err(VpError::MalformedToken("Expected 3 parts in JWT".into()));
+    }
+
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    let b64_pad = base64::engine::general_purpose::URL_SAFE;
+
+    let header_bytes = b64
+        .decode(parts[0])
+        .or_else(|_| b64_pad.decode(parts[0]))
+        .map_err(|e| VpError::MalformedToken(format!("header base64: {}", e)))?;
+    let header: serde_json::Value = serde_json::from_slice(&header_bytes)
+        .map_err(|e| VpError::MalformedToken(format!("header JSON: {}", e)))?;
+
+    let payload_bytes = b64
+        .decode(parts[1])
+        .or_else(|_| b64_pad.decode(parts[1]))
+        .map_err(|e| VpError::MalformedToken(format!("payload base64: {}", e)))?;
+    let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)
+        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {}", e)))?;
+
+    let alg = header.get("alg").and_then(|v| v.as_str()).unwrap_or("");
+    if alg != "EdDSA" {
+        return Err(VpError::MalformedToken(format!("Unsupported algorithm '{}', expected 'EdDSA'", alg)));
+    }
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    if let Some(exp) = payload.get("exp").and_then(|v| v.as_u64()) {
+        if now > exp {
+            return Err(VpError::MalformedToken("OAuth2 JWT expired".into()));
+        }
+    }
+
+    if let Some(nbf) = payload.get("nbf").and_then(|v| v.as_u64()) {
+        if now < nbf {
+            return Err(VpError::MalformedToken("OAuth2 JWT not yet valid".into()));
+        }
+    }
+
+    let iss = payload.get("iss").and_then(|v| v.as_str()).unwrap_or("");
+    let target_jwks_url = if let Some(override_url) = jwks_url_override {
+        override_url.to_string()
+    } else if iss.starts_with("http://") || iss.starts_with("https://") {
+        format!("{}/.well-known/jwks.json", iss.trim_end_matches('/'))
+    } else {
+        "http://127.0.0.1:3075/.well-known/jwks.json".to_string()
+    };
+
+    let jwks_res = client
+        .get(&target_jwks_url)
+        .send()
+        .await
+        .map_err(|e| VpError::IssuerResolution(format!("Failed to fetch JWKS from {}: {}", target_jwks_url, e)))?;
+    let jwks: serde_json::Value = jwks_res
+        .json()
+        .await
+        .map_err(|e| VpError::IssuerResolution(format!("Failed to parse JWKS JSON from {}: {}", target_jwks_url, e)))?;
+
+    let keys = jwks
+        .get("keys")
+        .and_then(|k| k.as_array())
+        .ok_or_else(|| VpError::IssuerResolution(format!("Invalid JWKS structure at {}", target_jwks_url)))?;
+
+    let target_kid = header.get("kid").and_then(|k| k.as_str());
+    let key_entry = if let Some(kid) = target_kid {
+        keys.iter()
+            .find(|k| k.get("kid").and_then(|id| id.as_str()) == Some(kid))
+            .ok_or_else(|| VpError::IssuerResolution(format!("Key ID '{}' not found in JWKS", kid)))?
+    } else {
+        keys.first().ok_or_else(|| VpError::IssuerResolution("JWKS contains no keys".into()))?
+    };
+
+    let x_str = key_entry
+        .get("x")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| VpError::IssuerResolution("Missing 'x' field in JWK".into()))?;
+
+    let pub_key_bytes = b64
+        .decode(x_str)
+        .or_else(|_| b64_pad.decode(x_str))
+        .map_err(|e| VpError::IssuerResolution(format!("Failed to decode JWK x field: {}", e)))?;
+    let pub_key_arr: [u8; 32] = pub_key_bytes
+        .try_into()
+        .map_err(|_| VpError::IssuerResolution("Invalid public key length in JWK".into()))?;
+
+    let signing_input = format!("{}.{}", parts[0], parts[1]);
+    let sig_bytes = b64
+        .decode(parts[2])
+        .or_else(|_| b64_pad.decode(parts[2]))
+        .map_err(|_| VpError::VpSignatureInvalid)?;
+
+    verify_ed25519_signature(&pub_key_arr, signing_input.as_bytes(), &sig_bytes)
+        .map_err(|_| VpError::CredentialSignatureInvalid)?;
+
+    let tenant_id = payload
+        .get("tenant_id")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            let sub = payload.get("sub").and_then(|v| v.as_str()).unwrap_or("unknown");
+            format!("tenant_{}", sub.replace(':', "_"))
+        });
+
+    let requester_did = payload
+        .get("sub")
+        .and_then(|v| v.as_str())
+        .unwrap_or(iss)
+        .to_string();
+
+    let oauth_scopes = match payload.get("scope") {
+        Some(serde_json::Value::Array(arr)) => {
+            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
+        }
+        Some(serde_json::Value::String(s)) => {
+            s.split_whitespace().map(|item| item.to_string()).collect()
+        }
+        _ => Vec::new(),
+    };
+
+    Ok(IdentityContext {
+        tenant_id,
+        owner_did: iss.to_string(),
+        requester_did,
+        auth_level: trust_core::actor::AuthLevel::Level3Session,
+        auth_method: AuthMethod::VpEdDsa,
+        oauth_scopes,
+        session_jwt: token.to_string(),
+        source: SourceContext::default(),
+    })
 }
 
 // ─── DID Resolution Helpers ──────────────────────────────────
@@ -755,6 +902,23 @@ mod tests {
             assert!(msg.contains("SSRF block"));
         } else {
             panic!("Expected SSRF block error for local domain");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_verify_oauth2_eddsa_jwt_invalid_alg() {
+        let client = reqwest::Client::new();
+        let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        let header = b64.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
+        let payload = b64.encode(b"{\"iss\":\"http://127.0.0.1:3075\",\"sub\":\"company-beta\"}");
+        let token = format!("{}.{}.fake_sig", header, payload);
+
+        let res = verify_oauth2_eddsa_jwt(&token, &client, None).await;
+        assert!(res.is_err());
+        if let Err(VpError::MalformedToken(msg)) = res {
+            assert!(msg.contains("Unsupported algorithm"));
+        } else {
+            panic!("Expected Unsupported algorithm error");
         }
     }
 }

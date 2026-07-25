@@ -30,7 +30,7 @@ Server 1 is the stateless, public-facing ingress boundary exposed to external in
 
 ### Core Edge Components
 1. **`platform/global_domain/public_gateway`**:
-   - **Public Edge Router**: Handles inbound HTTP webhooks, DID resolution requests (`did:web`, `did:twin`), and public API endpoints.
+   - **Public Edge Router**: Handles inbound HTTP webhooks, DID resolution requests (`did:web`, `did:key`), and public API endpoints.
    - **Secure WebSocket Proxy (`/api/ws`)**: Relays real-time audit and status events from internal NATS streams to client browser applications without exposing internal NATS ports (port 9222 / 4222) to the public internet.
    - **XChaCha20-Poly1305 / HKDF Encryption**: Encrypts and decrypts ephemeral JIT routing tokens for leaf node peering.
 

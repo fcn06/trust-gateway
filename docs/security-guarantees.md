@@ -1,6 +1,6 @@
 # Security Guarantees Classification
 
-To ensure complete transparency and avoid security posture misrepresentation, the following table details the technical nature of each guarantee provided by the Lianxi Trust Gateway architecture:
+To ensure complete transparency and avoid security posture misrepresentation, the following table details the technical nature of each guarantee provided by the Trust Gateway architecture:
 
 | Guarantee | Nature | Implementation Mechanism | Domain Module |
 |---|---|---|---|

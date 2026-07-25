@@ -120,7 +120,8 @@ impl TokenValidator for SsiTokenValidator {
     ) -> Result<trust_auth::IdentityContext, StatusCode> {
         let token = extract_bearer_token(headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-        let mut resolver = trust_auth::AuthResolver::new(secret);
+        let mut resolver = trust_auth::AuthResolver::new(secret)
+            .with_http_client(self.http_client.clone());
         if let Some(ref cache) = self.did_web_cache {
             resolver = resolver.with_did_web_cache(cache.clone());
         }

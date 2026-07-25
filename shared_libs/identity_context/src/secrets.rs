@@ -57,6 +57,8 @@ pub fn load_secret(var_name: &str) -> Option<SecretString> {
             "B2B_SECRET_COMPANY_EPSILON" => "b2b_secret_epsilon",
             "LLM_A2A_API_KEY" => "llm_a2a_api_key",
             "LLM_MCP_API_KEY" => "llm_mcp_api_key",
+            "LLM_A2A_API_KEY_B2B" => "llm_a2a_api_key_b2b",
+            "LLM_MCP_API_KEY_B2B" => "llm_mcp_api_key_b2b",
             "GOOGLE_CLIENT_ID" => "google_client_id",
             "GOOGLE_CLIENT_SECRET" => "google_client_secret",
             "GOOGLE_REDIRECT_URI" => "google_redirect_uri",

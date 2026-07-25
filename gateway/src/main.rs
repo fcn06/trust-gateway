@@ -102,7 +102,7 @@ struct Args {
     /// Comma-separated list of tool names that are always visible in MCP tools/list,
     /// regardless of the active context bundle. These are the "default tools" for
     /// the Smart Filtering system.
-    #[arg(long, env = "DEFAULT_TOOLS", default_value = "search_skills,switch_context,list_bundles,vp_search,claw_weather,claw_extract_content_from_url,claw_hello_world,inspect_schema,compute_statistics,detect_anomalies,generate_markdown,join_datasets,sample_rows,discover_agent_services")]
+    #[arg(long, env = "DEFAULT_TOOLS", default_value = "search_skills,switch_context,list_bundles,vp_search,claw_weather,claw_extract_content_from_url,claw_hello_world,inspect_schema,compute_statistics,detect_anomalies,generate_markdown,join_datasets,sample_rows,discover_agent_services,call_b2b_agent,register_b2b_agent,list_registered_b2b_agents,discover_b2b_agents")]
     default_tools: String,
 }
 

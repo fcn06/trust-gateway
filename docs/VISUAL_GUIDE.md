@@ -54,7 +54,7 @@ sequenceDiagram
     
     alt Require Human Approval
         Policy-->>Gateway: Result: RequireApproval
-        Gateway->>Human: Trigger Human Approval prompt (NATS KV action_reviews)
+        Gateway->>Human: Trigger Human Approval prompt
         Human-->>Gateway: Approve Action
     else Auto-Approved
         Policy-->>Gateway: Result: Allow

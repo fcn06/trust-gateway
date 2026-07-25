@@ -38,8 +38,8 @@ This document provides a step-by-step technical walkthrough of how an AI Agent p
 The agent receives the user prompt and constructs a standard `ProposedAction` struct (`crates/trust-model`):
 - **Action**: `"inspect_schema"`
 - **Arguments**: `{"dataset": "sales"}`
-- **Agent DID**: `"did:key:z6MkpTHR8VNsBxYWhBXiP5m4b5536Z8L5n5NfC1g55555555"`
-- **Tenant ID**: `"98b724e5-2a74-4b4c-b9b3-3e386c7bd4c8"`
+- **Agent DID**: `"did:example:agent-001"`
+- **Tenant ID**: `"<tenant-uuid>"`
 
 ### 2. Policy Engine Evaluation (`crates/trust-policy`)
 The Trust Gateway policy engine evaluates priority-ordered attribute rules against the proposal:
@@ -61,7 +61,7 @@ The Executor Host receives the `ExecutionGrant` JWT:
 - **Signature Verification**: Verifies the Ed25519 signature against the Gateway's public key (`verifier`).
 - **Input Binding Verification**: Recalculates SHA-256 `input_hash` of actual arguments and asserts an exact match (preventing parameter tampering).
 - **Single-Use Replay Check**: Verifies the `jti` nonce has not been executed previously.
-- **Sandboxed Execution**: Runs `run.py` inside the isolated execution container (`tgx_sandbox`).
+- **Sandboxed Execution**: Runs `run.py` inside an isolated execution container.
 - **PII Egress Filter**: Passes stdout through `crates/trust-egress` regex scrubbing to redact sensitive PII before returning the final sanitized response to the chat interface:
   ```json
   {

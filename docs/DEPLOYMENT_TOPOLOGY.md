@@ -1,72 +1,57 @@
-# Public Edge & Sovereign Core Deployment Topology
+# Public Edge & Sovereign Core Deployment Model
 
-This document details the multi-server physical deployment topology of the **Trust Gateway**, explaining the architectural split between the **Public Edge Boundary (Server 1)** and the **Sovereign Core Boundary (Server 2)**.
+This document describes, at a conceptual level, the recommended deployment separation for **Trust Gateway**: a **stateless public edge** boundary and a **private governance core** boundary.
 
 ---
 
-## 🏗️ 2-Server Physical Topology
+## 🏗️ Deployment Principle
+
+Trust Gateway is designed to run with a hard boundary between:
+
+- A **stateless public edge** — the only surface exposed to external clients, holding no credentials, keys, or execution authority.
+- A **private governance core** — the policy engine, grant issuer, and executors, isolated from direct public internet ingress.
 
 ```
-[Public Edge Boundary: Server 1]            [Sovereign Core Boundary: Server 2]
-┌──────────────────────────────────────┐    ┌──────────────────────────────────────┐
-│           TRUST GATEWAY              │    │           TRUST GATEWAY              │
-│          (Public Edge)               │    │          (Core Governance)           │
-│                                      │    │                                      │
-│  platform/global_domain/public_gateway│ ──►│  gateway/ (Policy Engine & Grant)    │
-│  platform/tenant_registry            │    │  executor_host/ (Native/VP/Connector) │
-│  platform/tenant_context             │    │  crates/ & adapters/                 │
-└──────────────────────────────────────┘    └──────────────────────────────────────┘
+   [ Public-Facing Edge ]                 [ Private Governance Core ]
+   Stateless ingress            ──────►    Policy Engine
+   No stored credentials                   Grant Issuance
+                                            Executor Runtime
 ```
 
----
-
-## 🛡️ 1. Server 1: Public Edge Boundary (`platform/`)
-
-Server 1 is the stateless, public-facing ingress boundary exposed to external internet clients, webhooks, and browser web applications.
-
-### Security Invariants (Server 1)
-- **Zero Stored Credentials**: Server 1 stores no private database keys, user identity records, or SaaS API credentials.
-- **Stateless Operation**: If Server 1 is compromised or restarted, no sensitive user data or execution grants can be leaked.
-
-### Core Edge Components
-1. **`platform/global_domain/public_gateway`**:
-   - **Public Edge Router**: Handles inbound HTTP webhooks, DID resolution requests (`did:web`, `did:key`), and public API endpoints.
-   - **Secure WebSocket Proxy (`/api/ws`)**: Relays real-time audit and status events from internal NATS streams to client browser applications without exposing internal NATS ports (port 9222 / 4222) to the public internet.
-   - **XChaCha20-Poly1305 / HKDF Encryption**: Encrypts and decrypts ephemeral JIT routing tokens for leaf node peering.
-
-2. **`platform/tenant_registry`**:
-   - **Multi-Tenant Router**: Maps incoming DID identities and request origins to workspace tenant IDs dynamically.
-
-3. **`platform/tenant_context`**:
-   - **Context Provider**: Holds lightweight tenant metadata and context definitions.
+The exact internal network topology (server counts, port assignments, and inter-node routing) is an operational deployment detail left to each deployer and is intentionally not prescribed here — see `deploy/` for a reference Docker Compose setup you can adapt.
 
 ---
 
-## 🔒 2. Server 2: Sovereign Core Boundary (`gateway/` & `executor_host/`)
+## 🛡️ 1. Public Edge Boundary
 
-Server 2 is the private, hardened execution control plane housing the policy engine, key vault, and sandboxed executor workers.
+The public edge is the stateless, internet-facing ingress layer handling inbound requests, webhook callbacks, and DID resolution (standard `did:web` and similar methods).
 
-### Security Invariants (Server 2)
-- **Private Network Isolation**: Server 2 is isolated from direct public internet ingress. Communication from Server 1 flows exclusively over NATS leaf node peering (port 7422) protected by mTLS / Ed25519 NKey authentication.
-- **Execution Capability Isolation**: SaaS API credentials and execution scripts exist only on Server 2 inside isolated executor profiles.
-
-### Core Governance Components
-1. **`gateway/`**:
-   - **Attribute Policy Evaluator (`crates/trust-policy`)**: Evaluates `ProposedAction` payloads against priority-ordered `policy.toml` rules.
-   - **Grant Minter (`crates/trust-grants`)**: Mints short-lived (30s-60s) Ed25519-signed `ExecutionGrant` JWTs bound to canonical SHA-256 `input_hash` digests.
-   - **Human-in-the-Loop Approval Daemon**: Manages pending approvals via NATS KV (`action_reviews` bucket and `gateway.v1.approval.decision` topic).
-
-2. **`executor_host/`**:
-   - **Unified Executor Runtime**: Dispatches execution workloads under dedicated profiles (`native-tool`, `connector`, `vp`).
-   - **Cryptographic Grant Verification (`crates/trust-auth`)**: Asserts `aud = "executor-host"`, verifies Ed25519 signature, recalculates SHA-256 `input_hash`, and enforces single-use replay nonces.
-
-3. **Domain Crates (`crates/`) & Adapters (`adapters/`)**:
-   - Modular, zero-dependency core crates (`trust-model`, `trust-canonical`, `trust-audit`, `trust-egress`) and storage adapters (`transport-nats`, `storage-nats-kv`).
+### Security Invariants
+- **Zero Stored Credentials**: the public edge stores no private keys, identity records, or SaaS API credentials.
+- **Stateless Operation**: if the public edge is compromised or restarted, no sensitive data or execution grants can be leaked from it.
+- Real-time status/audit events are relayed to browser clients via a proxy layer without exposing internal message-bus endpoints publicly.
 
 ---
 
-## 📡 3. Cross-Server Communication (Leaf Node Peering)
+## 🔒 2. Governance Core Boundary
 
-The public edge and sovereign core communicate over a NATS Leaf Node bridge:
-- **Port 7422**: Cross-server pub/sub of namespaced messages (`trust.v1.<tenant>.action.propose`, `exec.v1.<tenant>.<profile>.invoke`).
-- **State Isolation**: Leaf node peering strictly permits message passing while blocking JetStream bucket state synchronization across the public boundary.
+The governance core is the private, hardened control plane housing the policy engine, grant issuer, and sandboxed executor workers (`gateway/`, `executor_host/`, and the domain `crates/`).
+
+### Security Invariants
+- **Private Network Isolation**: the governance core is not directly reachable from the public internet; all inbound traffic from the edge is authenticated and encrypted in transit.
+- **Execution Capability Isolation**: SaaS credentials and execution scripts exist only inside isolated executor profiles within this boundary, never on the edge.
+
+### Core Governance Responsibilities
+1. **`gateway/`** — evaluates `ProposedAction` payloads against `policy.toml` rules (`crates/trust-policy`), mints short-lived Ed25519-signed `ExecutionGrant`s bound to a canonical `input_hash` (`crates/trust-grants`), and manages human-in-the-loop approvals for high-risk actions.
+2. **`executor_host/`** — verifies each grant's signature, `input_hash` binding, and single-use replay nonce before dispatching the underlying tool (`native-tool`, `connector`, `vp` profiles), via `crates/trust-auth`.
+3. **Domain crates & adapters** — the zero-dependency core logic (`trust-model`, `trust-canonical`, `trust-audit`, `trust-egress`) plus transport/storage adapters, all decoupled from any specific deployment topology.
+
+---
+
+## 📡 3. Edge ↔ Core Communication
+
+Communication between the public edge and the governance core is authenticated, encrypted, and strictly scoped:
+- Only a narrow, allow-listed set of message subjects may cross the boundary — internal governance and audit subjects never traverse the public edge.
+- State (KV buckets, JetStream streams) is never synchronized across the boundary — only message passing is permitted.
+
+Deployers wiring up their own infrastructure should define their own network ACLs and port allocations appropriate to their environment; see `deploy/` for a starting reference configuration.

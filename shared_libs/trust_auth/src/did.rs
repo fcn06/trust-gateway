@@ -374,9 +374,7 @@ pub async fn verify_oauth2_eddsa_jwt(
     };
 
     let jwks_res = client.get(&target_jwks_url).send().await.map_err(|e| {
-        VpError::IssuerResolution(format!(
-            "Failed to fetch JWKS from {target_jwks_url}: {e}"
-        ))
+        VpError::IssuerResolution(format!("Failed to fetch JWKS from {target_jwks_url}: {e}"))
     })?;
     let jwks: serde_json::Value = jwks_res.json().await.map_err(|e| {
         VpError::IssuerResolution(format!(
@@ -392,9 +390,7 @@ pub async fn verify_oauth2_eddsa_jwt(
     let key_entry = if let Some(kid) = target_kid {
         keys.iter()
             .find(|k| k.get("kid").and_then(|id| id.as_str()) == Some(kid))
-            .ok_or_else(|| {
-                VpError::IssuerResolution(format!("Key ID '{kid}' not found in JWKS"))
-            })?
+            .ok_or_else(|| VpError::IssuerResolution(format!("Key ID '{kid}' not found in JWKS")))?
     } else {
         keys.first()
             .ok_or_else(|| VpError::IssuerResolution("JWKS contains no keys".into()))?
@@ -628,9 +624,7 @@ async fn resolve_did_web(
     // Resolve domain/host asynchronously to get all IP addresses
     let addrs = tokio::net::lookup_host(&resolve_target)
         .await
-        .map_err(|e| {
-            VpError::IssuerResolution(format!("Failed to resolve host '{host}': {e}"))
-        })?;
+        .map_err(|e| VpError::IssuerResolution(format!("Failed to resolve host '{host}': {e}")))?;
 
     let mut validated_ip = None;
     for addr in addrs {

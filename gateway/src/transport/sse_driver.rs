@@ -111,9 +111,7 @@ impl McpTransport for SseMcpDriver {
 
         let running = rmcp::serve_client(client_info, transport)
             .await
-            .map_err(|e| {
-                TransportError::ConnectionFailed(format!("MCP handshake failed: {e}"))
-            })?;
+            .map_err(|e| TransportError::ConnectionFailed(format!("MCP handshake failed: {e}")))?;
 
         let mcp_client = running.clone();
 

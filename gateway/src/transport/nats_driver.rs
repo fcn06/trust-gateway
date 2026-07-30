@@ -117,9 +117,7 @@ impl McpTransport for NatsMcpDriver {
                 Ok(Some(msg)) => {
                     let response: serde_json::Value = serde_json::from_slice(&msg.payload)
                         .map_err(|e| {
-                            TransportError::ProtocolError(format!(
-                                "Failed to parse response: {e}"
-                            ))
+                            TransportError::ProtocolError(format!("Failed to parse response: {e}"))
                         })?;
 
                     let payload = response.get("payload").ok_or_else(|| {

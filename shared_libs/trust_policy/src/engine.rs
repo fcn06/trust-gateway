@@ -47,8 +47,8 @@ impl TomlPolicyEngine {
 
     /// WS4.1: Add a rule from a JSON value. Re-sorts by priority after insertion.
     pub fn add_rule_from_json(&mut self, json: &serde_json::Value) -> Result<(), String> {
-        let rule: PolicyRule = serde_json::from_value(json.clone())
-            .map_err(|e| format!("Invalid rule JSON: {e}"))?;
+        let rule: PolicyRule =
+            serde_json::from_value(json.clone()).map_err(|e| format!("Invalid rule JSON: {e}"))?;
         // Validate effect
         match rule.effect.as_str() {
             "allow" | "deny" | "require_approval" | "require_proof" => {}

@@ -568,9 +568,7 @@ async fn publish_did_handler(
         );
         return Err((
             StatusCode::FORBIDDEN,
-            format!(
-                "Signing DID '{kid_did}' does not match document id '{did}'"
-            ),
+            format!("Signing DID '{kid_did}' does not match document id '{did}'"),
         ));
     }
 
@@ -632,12 +630,7 @@ async fn oid4vp_get_request(
             "Host did not respond in time".to_string(),
         )
     })?
-    .map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("NATS request failed: {e}"),
-        )
-    })?;
+    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("NATS request failed: {e}")))?;
 
     let jwt_bytes = reply.payload.to_vec();
 
@@ -686,12 +679,7 @@ async fn oid4vp_submit_response(
             "Host did not respond in time".to_string(),
         )
     })?
-    .map_err(|e| {
-        (
-            StatusCode::BAD_GATEWAY,
-            format!("NATS request failed: {e}"),
-        )
-    })?;
+    .map_err(|e| (StatusCode::BAD_GATEWAY, format!("NATS request failed: {e}")))?;
 
     let response: serde_json::Value = serde_json::from_slice(&reply.payload).map_err(|e| {
         (

@@ -112,11 +112,9 @@ pub async fn sse_handler(
                         "http"
                     }
                 });
-            let metadata_url =
-                format!("{scheme}://{host}/.well-known/oauth-protected-resource");
-            let header_value = format!(
-                "Bearer realm=\"trust_gateway\", resource_metadata=\"{metadata_url}\""
-            );
+            let metadata_url = format!("{scheme}://{host}/.well-known/oauth-protected-resource");
+            let header_value =
+                format!("Bearer realm=\"trust_gateway\", resource_metadata=\"{metadata_url}\"");
             if let Ok(val) = axum::http::HeaderValue::from_str(&header_value) {
                 response
                     .headers_mut()
@@ -165,9 +163,7 @@ pub async fn sse_handler(
             }
         });
 
-    let messages_url = format!(
-        "{scheme}://{host}/v1/mcp/messages?session_id={session_id}"
-    );
+    let messages_url = format!("{scheme}://{host}/v1/mcp/messages?session_id={session_id}");
 
     tracing::info!("🔌 MCP SSE connection established (session={})", session_id);
 

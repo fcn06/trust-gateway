@@ -16,9 +16,7 @@ pub fn verify_input_hash(
 ) -> Result<(), anyhow::Error> {
     let computed = canonical_hash(arguments);
     if grant_hash != computed {
-        anyhow::bail!(
-            "Input hash mismatch: grant claimed {grant_hash}, computed {computed}"
-        );
+        anyhow::bail!("Input hash mismatch: grant claimed {grant_hash}, computed {computed}");
     }
     Ok(())
 }

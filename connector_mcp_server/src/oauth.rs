@@ -34,9 +34,7 @@ pub async fn provider_authorize(
     if client_id.is_empty() {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
-            format!(
-                "OAuth provider '{provider_id}' is not configured (missing client ID)"
-            ),
+            format!("OAuth provider '{provider_id}' is not configured (missing client ID)"),
         ));
     }
 

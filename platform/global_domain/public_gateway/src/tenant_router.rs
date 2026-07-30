@@ -94,9 +94,7 @@ impl TenantNatsRouter {
             }
             None => {
                 // Fallback: use default subject format with tenant prefix
-                Ok(format!(
-                    "v1.{tenant_id}.{node_id}.didcomm.{target_id}"
-                ))
+                Ok(format!("v1.{tenant_id}.{node_id}.didcomm.{target_id}"))
             }
         }
     }

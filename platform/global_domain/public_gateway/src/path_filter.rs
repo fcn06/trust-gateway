@@ -19,10 +19,9 @@ fn is_malicious_path(path: &str) -> bool {
     // Block hidden files/directories except .well-known
     let segments: Vec<&str> = path.split('/').collect();
     for segment in segments {
-        if segment.starts_with('.') && !segment.is_empty()
-            && segment != ".well-known" {
-                return true;
-            }
+        if segment.starts_with('.') && !segment.is_empty() && segment != ".well-known" {
+            return true;
+        }
     }
 
     let path_lower = path.to_lowercase();

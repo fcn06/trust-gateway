@@ -132,9 +132,7 @@ impl VpExecutor {
         }
 
         if result_text.trim().is_empty() {
-            result_text = format!(
-                "No specific information found for '{query}' on DuckDuckGo."
-            );
+            result_text = format!("No specific information found for '{query}' on DuckDuckGo.");
         }
 
         tracing::info!("✅ [VP Search] Returning {} chars", result_text.len());
@@ -208,16 +206,15 @@ impl VpExecutor {
         let js = async_nats::jetstream::new(self.nats.clone());
         match js.get_key_value("b2b_agents").await {
             Ok(kv) => Ok(kv),
-            Err(_) => {
-                js.create_key_value(async_nats::jetstream::kv::Config {
+            Err(_) => js
+                .create_key_value(async_nats::jetstream::kv::Config {
                     bucket: "b2b_agents".to_string(),
                     history: 1,
                     max_age: std::time::Duration::from_secs(365 * 24 * 3600),
                     ..Default::default()
                 })
                 .await
-                .map_err(|e| TrustError::Internal(format!("Failed to create b2b_agents KV: {e}")))
-            }
+                .map_err(|e| TrustError::Internal(format!("Failed to create b2b_agents KV: {e}"))),
         }
     }
 

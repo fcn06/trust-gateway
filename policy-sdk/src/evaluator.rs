@@ -69,9 +69,7 @@ impl PolicyEvaluator {
                 .contains(&tool_name.to_string())
         {
             return PolicyOutcome::Deny {
-                reason: format!(
-                    "Agent Policy: Tool '{tool_name}' not permitted for agent profile"
-                ),
+                reason: format!("Agent Policy: Tool '{tool_name}' not permitted for agent profile"),
             };
         }
 

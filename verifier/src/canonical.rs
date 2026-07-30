@@ -33,8 +33,7 @@ pub fn canonical_json(value: &serde_json::Value) -> String {
             let pairs: Vec<String> = keys
                 .iter()
                 .map(|k| {
-                    let key_str =
-                        serde_json::to_string(*k).unwrap_or_else(|_| format!("\"{k}\""));
+                    let key_str = serde_json::to_string(*k).unwrap_or_else(|_| format!("\"{k}\""));
                     let val_str = canonical_json(obj.get(*k).unwrap());
                     format!("{key_str}:{val_str}")
                 })

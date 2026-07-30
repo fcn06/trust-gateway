@@ -148,9 +148,7 @@ fn build_grant_validator(args: &Args) -> Result<trust_core::grant_validator::Gra
                 }
             }
             if key_count == 0 {
-                anyhow::bail!(
-                    "No key files (.pem, .pub, .key) found in directory {path:?}"
-                );
+                anyhow::bail!("No key files (.pem, .pub, .key) found in directory {path:?}");
             }
         } else {
             let pem = std::fs::read_to_string(key_path)?;

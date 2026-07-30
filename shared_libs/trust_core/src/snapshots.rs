@@ -16,9 +16,7 @@ mod tests {
         if !path.exists() {
             // Create initial snapshot if it doesn't exist
             fs::write(&path, &schema_json).expect("Failed to write initial snapshot");
-            panic!(
-                "Snapshot created for {name}. Please review and commit it."
-            );
+            panic!("Snapshot created for {name}. Please review and commit it.");
         }
 
         let existing_schema = fs::read_to_string(&path).expect("Failed to read snapshot");

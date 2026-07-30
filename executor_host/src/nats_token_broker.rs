@@ -179,9 +179,7 @@ impl TokenBroker for NatsTokenBroker {
     ) -> Result<OAuthToken, TokenError> {
         let key = OAuthToken::make_kv_key(tenant_id, provider);
         let provider_config = self.providers.get(provider).ok_or_else(|| {
-            TokenError::RefreshFailed(format!(
-                "No provider configuration found for '{provider}'"
-            ))
+            TokenError::RefreshFailed(format!("No provider configuration found for '{provider}'"))
         })?;
 
         // Attempt refresh loop (CAS updates)

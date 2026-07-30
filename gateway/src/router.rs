@@ -999,24 +999,21 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
 
                     // Key 1: session_jti (correlation_id or SSE UUID)
                     if !session_id.is_empty() {
-                        let key =
-                            format!("session_{}", session_id.replace([':', '/'], "_"));
+                        let key = format!("session_{}", session_id.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
 
                     // Key 2: requester_did
                     let req_did = &req.actor.requester_did;
                     if !req_did.is_empty() {
-                        let key =
-                            format!("session_{}", req_did.replace([':', '/'], "_"));
+                        let key = format!("session_{}", req_did.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
 
                     // Key 3: owner_did
                     let owner_did = &req.actor.owner_did;
                     if !owner_did.is_empty() {
-                        let key =
-                            format!("session_{}", owner_did.replace([':', '/'], "_"));
+                        let key = format!("session_{}", owner_did.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
                 }

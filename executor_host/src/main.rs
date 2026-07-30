@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports, unused_variables, deprecated, clippy::all)]
+
 use anyhow::Result;
 use clap::Parser;
 use std::sync::Arc;

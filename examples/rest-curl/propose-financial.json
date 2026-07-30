@@ -1,0 +1,12 @@
+{
+  "action_id": "rest-demo-002",
+  "tool_name": "process_refund",
+  "arguments": {
+    "amount": "500.00",
+    "reason": "customer request"
+  },
+  "operation_attributes": {
+    "operation_kind": "financial_mutation",
+    "amount_cents": 50000
+  }
+}

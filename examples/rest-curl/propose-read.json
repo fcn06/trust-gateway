@@ -1,0 +1,10 @@
+{
+  "action_id": "rest-demo-001",
+  "tool_name": "inspect_schema",
+  "arguments": {
+    "dataset": "sales"
+  },
+  "operation_attributes": {
+    "operation_kind": "read_only"
+  }
+}

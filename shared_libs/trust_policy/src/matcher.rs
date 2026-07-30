@@ -80,15 +80,12 @@ impl PolicyMatcher {
         // Match maximum amount
         if let Some(ref max_str) = self.max_amount {
             if let Some(max) = parse_money(max_str) {
-                match &req.action.amount {
-                    Some(action_amount) => {
-                        if action_amount.currency != max.currency
-                            || action_amount.amount_minor > max.amount_minor
-                        {
-                            return false;
-                        }
+                if let Some(action_amount) = &req.action.amount {
+                    if action_amount.currency != max.currency
+                        || action_amount.amount_minor > max.amount_minor
+                    {
+                        return false;
                     }
-                    None => {} // No amount is fine for max check
                 }
             }
         }

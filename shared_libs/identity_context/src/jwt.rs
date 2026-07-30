@@ -163,9 +163,10 @@ impl AuthVerifier for HmacAuthVerifier {
 
         use jwt_simple::prelude::{Duration, MACLike, VerificationOptions};
 
-        let mut options = VerificationOptions::default();
-        // Phase 6: Strict clock skew enforcement (±5 seconds)
-        options.time_tolerance = Some(Duration::from_secs(5));
+        let mut options = VerificationOptions {
+            time_tolerance: Some(Duration::from_secs(5)),
+            ..Default::default()
+        };
 
         if let Some(aud) = &self.allowed_audience {
             options.allowed_audiences = Some(std::collections::HashSet::from([aud.clone()]));
@@ -240,8 +241,10 @@ impl AuthVerifier for Ed25519AuthVerifier {
         use jwt_simple::algorithms::EdDSAPublicKeyLike;
         use jwt_simple::prelude::{Duration, VerificationOptions};
 
-        let mut options = VerificationOptions::default();
-        options.time_tolerance = Some(Duration::from_secs(15));
+        let mut options = VerificationOptions {
+            time_tolerance: Some(Duration::from_secs(15)),
+            ..Default::default()
+        };
 
         if let Some(aud) = &self.allowed_audience {
             options.allowed_audiences = Some(std::collections::HashSet::from([aud.clone()]));

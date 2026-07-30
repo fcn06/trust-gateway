@@ -144,7 +144,7 @@ impl AuthResolver {
         if self.is_did_signed_jwt(token) {
             match crate::did::verify_eddsa_session_jwt(token) {
                 Ok(claims) => {
-                    let (auth_level, auth_method) = self.extract_enriched_auth(token);
+                    let (auth_level, _auth_method) = self.extract_enriched_auth(token);
                     return Ok(IdentityContext {
                         tenant_id: claims.tenant_id,
                         owner_did: claims.iss,

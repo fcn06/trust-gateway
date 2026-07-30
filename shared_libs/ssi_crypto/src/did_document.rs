@@ -65,7 +65,7 @@ pub fn build_did_document(
     did: &str,
     public_key_hex: &str,
     gateway_url: &str,
-    target_id: &str,
+    _target_id: &str,
 ) -> DidDocument {
     let key_id = format!("{did}#key-1");
     let service_id = format!("{did}#messaging");

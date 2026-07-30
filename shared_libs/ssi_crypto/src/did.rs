@@ -7,6 +7,7 @@ use hkdf::Hkdf;
 use sha2::Sha256;
 
 /// Info string for DID key derivation from master seed.
+#[allow(dead_code)]
 const INFO_DID_DERIVATION: &[u8] = b"sovereign:did-derivation";
 
 /// Result of creating a new DID identity.

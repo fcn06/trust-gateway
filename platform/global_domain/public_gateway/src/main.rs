@@ -510,6 +510,7 @@ async fn resolve_did_handler(
 /// The Gateway verifies:
 ///   1. The Ed25519 signature is valid (key extracted from the `kid` field).
 ///   2. The signing DID (from `kid`) matches the `id` field in the DID Document.
+///
 /// This prevents an attacker from overwriting a victim's routing info.
 async fn publish_did_handler(
     State(state): State<AppState>,

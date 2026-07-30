@@ -30,6 +30,7 @@ pub struct AuditAnchor {
 ///
 /// Reads all audit events for the given date from the tenant's audit KV bucket,
 /// hashes them in order, and stores the anchor record.
+#[allow(dead_code)]
 pub async fn compute_daily_anchor(
     state: &Arc<AppState>,
     tenant_id: &str,

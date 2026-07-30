@@ -576,7 +576,7 @@ fn is_private_ip(ip: std::net::IpAddr) -> bool {
 /// fetches the DID Document, and extracts the first verification method's public key.
 async fn resolve_did_web(
     did: &str,
-    http_client: &reqwest::Client,
+    _http_client: &reqwest::Client,
     kv_store: Option<&async_nats::jetstream::kv::Store>,
 ) -> Result<[u8; 32], VpError> {
     if let Some(kv) = kv_store {

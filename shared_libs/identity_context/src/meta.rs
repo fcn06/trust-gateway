@@ -248,6 +248,7 @@ mod tests {
 
     // UT-001: _meta extraction success
     #[test]
+    #[allow(deprecated)]
     fn test_extract_meta_success() {
         let jwt = make_jwt(&serde_json::json!({
             "iss": "did:twin:zOwner",

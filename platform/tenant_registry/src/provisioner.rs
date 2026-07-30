@@ -69,6 +69,7 @@ pub async fn provision_tenant_namespaces(
 /// Deprovision (delete) all NATS KV buckets for a tenant.
 ///
 /// Used only for hard-delete or cleanup. Soft-delete keeps data.
+#[allow(dead_code)]
 pub async fn deprovision_tenant_namespaces(
     js: &jetstream::Context,
     tenant_id: &str,

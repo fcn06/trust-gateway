@@ -184,8 +184,10 @@ mod tests {
 
     #[test]
     fn test_blocks_large_response() {
-        let mut config = EgressConfig::default();
-        config.max_response_bytes = 10;
+        let config = EgressConfig {
+            max_response_bytes: 10,
+            ..Default::default()
+        };
         let content = "This is too long";
         assert_eq!(
             validate_egress(content, &config),

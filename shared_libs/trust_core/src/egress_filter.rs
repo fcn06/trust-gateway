@@ -40,14 +40,16 @@ impl Default for ResultHandlingPolicy {
     fn default() -> Self {
         Self {
             max_result_bytes: 1048576,
-            allowed_data_classes: vec![FieldSecurityClass::PublicData, FieldSecurityClass::InternalIdentifier],
+            allowed_data_classes: vec![
+                FieldSecurityClass::PublicData,
+                FieldSecurityClass::InternalIdentifier,
+            ],
             redaction_profile: "standard".to_string(),
         }
     }
 }
 
 pub struct StructuredFieldClassifier;
-
 
 impl StructuredFieldClassifier {
     /// Redacts a structured JSON object according to a field classification schema map.
@@ -63,10 +65,14 @@ impl StructuredFieldClassifier {
                         FieldSecurityClass::PiiContact if allowed_audience != "internal_admin" => {
                             map.insert(key.clone(), serde_json::json!("[REDACTED:pii_contact]"));
                         }
-                        FieldSecurityClass::InternalIdentifier if allowed_audience == "external" => {
+                        FieldSecurityClass::InternalIdentifier
+                            if allowed_audience == "external" =>
+                        {
                             map.insert(key.clone(), serde_json::json!("[REDACTED:internal_id]"));
                         }
-                        FieldSecurityClass::BusinessConfidential if allowed_audience == "external" => {
+                        FieldSecurityClass::BusinessConfidential
+                            if allowed_audience == "external" =>
+                        {
                             map.insert(key.clone(), serde_json::json!("[REDACTED:confidential]"));
                         }
                         _ => {}

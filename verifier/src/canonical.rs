@@ -21,7 +21,7 @@ pub fn canonical_json(value: &serde_json::Value) -> String {
         }
         serde_json::Value::Number(n) => n.to_string(),
         serde_json::Value::String(s) => {
-            serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s))
+            serde_json::to_string(s).unwrap_or_else(|_| format!("\"{s}\""))
         }
         serde_json::Value::Array(arr) => {
             let items: Vec<String> = arr.iter().map(canonical_json).collect();
@@ -34,9 +34,9 @@ pub fn canonical_json(value: &serde_json::Value) -> String {
                 .iter()
                 .map(|k| {
                     let key_str =
-                        serde_json::to_string(*k).unwrap_or_else(|_| format!("\"{}\"", k));
+                        serde_json::to_string(*k).unwrap_or_else(|_| format!("\"{k}\""));
                     let val_str = canonical_json(obj.get(*k).unwrap());
-                    format!("{}:{}", key_str, val_str)
+                    format!("{key_str}:{val_str}")
                 })
                 .collect();
             format!("{{{}}}", pairs.join(","))

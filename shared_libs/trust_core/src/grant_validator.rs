@@ -5,16 +5,19 @@
 // Supports Ed25519 asymmetric verification and HMAC fallback.
 // ─────────────────────────────────────────────────────────────
 
-use anyhow::Result;
-use jwt_simple::prelude::*;
-use std::sync::Arc;
-use std::collections::{HashSet, HashMap};
 use crate::grant::ExecutionGrant;
 use crate::traits::NonceStore;
+use anyhow::Result;
+use jwt_simple::prelude::*;
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 fn base64url_decode(input: &str) -> Option<Vec<u8>> {
     let mut alphabet = [0u8; 256];
-    for (i, &c) in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".iter().enumerate() {
+    for (i, &c) in b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        .iter()
+        .enumerate()
+    {
         alphabet[c as usize] = i as u8;
     }
     let bytes = input.as_bytes();
@@ -22,9 +25,13 @@ fn base64url_decode(input: &str) -> Option<Vec<u8>> {
     let mut buffer = 0u32;
     let mut bits = 0;
     for &b in bytes {
-        if b == b'=' { break; }
+        if b == b'=' {
+            break;
+        }
         let val = alphabet[b as usize];
-        if val == 0 && b != b'A' { continue; } // skip invalid chars/whitespace
+        if val == 0 && b != b'A' {
+            continue;
+        } // skip invalid chars/whitespace
         buffer = (buffer << 6) | val as u32;
         bits += 6;
         if bits >= 8 {
@@ -39,7 +46,9 @@ fn extract_kid(token: &str) -> Option<String> {
     let first_part = token.split('.').next()?;
     let decoded = base64url_decode(first_part)?;
     let json: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
-    json.get("kid").and_then(|v| v.as_str()).map(|s| s.to_string())
+    json.get("kid")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 /// Validates ExecutionGrant JWTs from the Trust Gateway.
@@ -52,6 +61,12 @@ pub struct GrantValidator {
     fallback_ed25519_key: Option<Ed25519PublicKey>,
     hmac_key: Option<HS256Key>,
     nonce_store: Option<Arc<dyn NonceStore>>,
+}
+
+impl Default for GrantValidator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GrantValidator {
@@ -119,7 +134,9 @@ impl GrantValidator {
 
     /// Check if at least one verification key is configured.
     pub fn has_keys(&self) -> bool {
-        !self.ed25519_keys.is_empty() || self.fallback_ed25519_key.is_some() || self.hmac_key.is_some()
+        !self.ed25519_keys.is_empty()
+            || self.fallback_ed25519_key.is_some()
+            || self.hmac_key.is_some()
     }
 
     /// Attach a nonce store for JTI replay prevention.
@@ -145,7 +162,8 @@ impl GrantValidator {
 
         // Resolve Ed25519 key by kid header
         let kid = extract_kid(token);
-        let ed_key = kid.as_ref()
+        let ed_key = kid
+            .as_ref()
             .and_then(|k| self.ed25519_keys.get(k))
             .or(self.fallback_ed25519_key.as_ref());
 
@@ -163,7 +181,7 @@ impl GrantValidator {
                     if self.hmac_key.is_some() {
                         tracing::debug!("Ed25519 verification failed, trying HMAC: {}", e);
                     } else {
-                        return Err(anyhow::anyhow!("Grant validation failed (Ed25519): {}", e));
+                        return Err(anyhow::anyhow!("Grant validation failed (Ed25519): {e}"));
                     }
                 }
             }
@@ -173,7 +191,7 @@ impl GrantValidator {
         if let Some(ref hmac_key) = self.hmac_key {
             let claims = hmac_key
                 .verify_token::<ExecutionGrant>(token, Some(options))
-                .map_err(|e| anyhow::anyhow!("Grant validation failed (HMAC): {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Grant validation failed (HMAC): {e}"))?;
 
             let now = chrono::Utc::now().timestamp();
             if claims.custom.expires_at < now {
@@ -223,7 +241,7 @@ impl GrantValidator {
             store
                 .consume(&grant.grant_id, ttl)
                 .await
-                .map_err(|e| anyhow::anyhow!("Grant replay rejected: {}", e))?;
+                .map_err(|e| anyhow::anyhow!("Grant replay rejected: {e}"))?;
         }
         Ok(())
     }

@@ -26,7 +26,7 @@ pub async fn provider_authorize(
     let provider = state.providers.get(&provider_id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
-            format!("OAuth provider '{}' not found", provider_id),
+            format!("OAuth provider '{provider_id}' not found"),
         )
     })?;
 
@@ -34,7 +34,9 @@ pub async fn provider_authorize(
     if client_id.is_empty() {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
-            format!("OAuth provider '{}' is not configured (missing client ID)", provider_id),
+            format!(
+                "OAuth provider '{provider_id}' is not configured (missing client ID)"
+            ),
         ));
     }
 
@@ -85,7 +87,7 @@ pub async fn provider_callback(
     let provider = state.providers.get(&provider_id).ok_or_else(|| {
         (
             StatusCode::NOT_FOUND,
-            format!("OAuth provider '{}' not found", provider_id),
+            format!("OAuth provider '{provider_id}' not found"),
         )
     })?;
 
@@ -124,7 +126,7 @@ pub async fn provider_callback(
         .map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
-                format!("Token exchange failed: {}", e),
+                format!("Token exchange failed: {e}"),
             )
         })?;
 
@@ -132,14 +134,17 @@ pub async fn provider_callback(
         let err_body = token_response.text().await.unwrap_or_default();
         return Err((
             StatusCode::BAD_GATEWAY,
-            format!("{} token exchange failed: {}", provider.display_name, err_body),
+            format!(
+                "{} token exchange failed: {}",
+                provider.display_name, err_body
+            ),
         ));
     }
 
     let token_data: serde_json::Value = token_response.json().await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse token response: {}", e),
+            format!("Failed to parse token response: {e}"),
         )
     })?;
 
@@ -166,7 +171,7 @@ pub async fn provider_callback(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to store token: {}", e),
+                format!("Failed to store token: {e}"),
             )
         })?;
 
@@ -185,7 +190,7 @@ pub async fn integration_status(
 ) -> Json<serde_json::Value> {
     let mut statuses = Vec::new();
 
-    for (provider_id, _) in &state.providers {
+    for provider_id in state.providers.keys() {
         let (connected, scopes, connected_at) =
             match state.token_store.get_token(&tenant_id, provider_id).await {
                 Ok(Some(token)) => {

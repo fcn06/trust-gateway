@@ -6,6 +6,5 @@
 // ─────────────────────────────────────────────────────────────
 
 pub use trust_verifier::{
-    DelegationChain, ExecutionBudget, ExecutionGrant, FinancialImpact, GrantClearance,
-    SignedGrant,
+    DelegationChain, ExecutionBudget, ExecutionGrant, FinancialImpact, GrantClearance, SignedGrant,
 };

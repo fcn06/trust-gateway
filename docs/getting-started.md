@@ -20,7 +20,7 @@ Follow the [REST/curl tutorial](tutorials/rest-curl-agent.md) — send `curl` re
 
 ### Integrate my agent via Python (10 minutes)
 
-See the [Python agent example](../examples/02-python-agent/) — a complete Python client that proposes actions and receives grants through the REST API.
+See the [Python agent example](../examples/python-agent/) — a complete Python client that proposes actions and receives grants through the REST API.
 
 ### Connect an MCP client (15 minutes)
 

@@ -35,10 +35,7 @@ pub async fn run_cron_scheduler(state: Arc<GatewayState>) {
         if let Some(ref registry) = state.tool_registry {
             // Ensure registry is up to date
             registry
-                .refresh_if_stale(
-                    &state.http_client,
-                    &state.connectors.host_url,
-                )
+                .refresh_if_stale(&state.http_client, &state.connectors.host_url)
                 .await;
 
             let tools = registry.all_tools().await;

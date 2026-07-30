@@ -2,13 +2,13 @@
 //!
 //! Added as routes to the Tenant Registry for centralized access.
 
-use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::AppState;
 
@@ -72,21 +72,22 @@ pub async fn export_audit(
         .store
         .get(&tenant_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Store error: {}", e)))?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Tenant not found".to_string()))?;
-
-    // Read from tenant-scoped audit bucket
-    let bucket_name = format!("tenant_{}_agent_audit", tenant_id);
-    let audit_kv = state
-        .js
-        .get_key_value(&bucket_name)
-        .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Cannot access audit bucket '{}': {}", bucket_name, e),
+                format!("Store error: {e}"),
             )
-        })?;
+        })?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Tenant not found".to_string()))?;
+
+    // Read from tenant-scoped audit bucket
+    let bucket_name = format!("tenant_{tenant_id}_agent_audit");
+    let audit_kv = state.js.get_key_value(&bucket_name).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Cannot access audit bucket '{bucket_name}': {e}"),
+        )
+    })?;
 
     let mut events = Vec::new();
     let limit = params.limit.unwrap_or(100).min(1000);
@@ -94,7 +95,7 @@ pub async fn export_audit(
     let mut keys = audit_kv.keys().await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Cannot list audit keys: {}", e),
+            format!("Cannot list audit keys: {e}"),
         )
     })?;
 
@@ -152,32 +153,35 @@ pub async fn get_metrics(
         .store
         .get(&tenant_id)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Store error: {}", e)))?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Store error: {e}"),
+            )
+        })?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Tenant not found".to_string()))?;
 
     // Read metrics from tenant-scoped KV (future: dedicated metrics bucket)
-    let bucket_name = format!("tenant_{}_agent_audit", tenant_id);
+    let bucket_name = format!("tenant_{tenant_id}_agent_audit");
     let event_count = match state.js.get_key_value(&bucket_name).await {
-        Ok(kv) => {
-            match kv.keys().await {
-                Ok(keys) => {
-                    use futures::StreamExt;
-                    keys.count().await as u64
-                }
-                Err(_) => 0,
+        Ok(kv) => match kv.keys().await {
+            Ok(keys) => {
+                use futures::StreamExt;
+                keys.count().await as u64
             }
-        }
+            Err(_) => 0,
+        },
         Err(_) => 0,
     };
 
     Ok(Json(TenantMetrics {
         tenant_id,
         period: "current_month".to_string(),
-        llm_tokens_used: 0,     // TODO: Aggregate from metering module
-        tool_calls: 0,           // TODO: Aggregate from metering events
-        escalations: 0,          // TODO: Count escalation events
-        messages_sent: 0,        // TODO: Count from sovereign_kv
-        messages_received: 0,    // TODO: Count from sovereign_kv
+        llm_tokens_used: 0,   // TODO: Aggregate from metering module
+        tool_calls: 0,        // TODO: Aggregate from metering events
+        escalations: 0,       // TODO: Count escalation events
+        messages_sent: 0,     // TODO: Count from sovereign_kv
+        messages_received: 0, // TODO: Count from sovereign_kv
         audit_events: event_count,
     }))
 }

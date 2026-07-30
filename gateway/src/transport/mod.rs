@@ -42,17 +42,16 @@ impl TransportRegistry {
     /// Register a transport driver for a given app ID.
     ///
     /// If a driver was already registered for this app, it is replaced.
-    pub async fn register(
-        &self,
-        app_id: &str,
-        driver: Arc<dyn McpTransport>,
-    ) {
+    pub async fn register(&self, app_id: &str, driver: Arc<dyn McpTransport>) {
         tracing::info!(
             "🔌 Transport registered: app_id='{}' type={}",
             app_id,
             driver.transport_type()
         );
-        self.drivers.write().await.insert(app_id.to_string(), driver);
+        self.drivers
+            .write()
+            .await
+            .insert(app_id.to_string(), driver);
     }
 
     /// Look up the transport driver for a given app ID.
@@ -96,7 +95,10 @@ impl TransportRegistry {
     /// This is a slower path used when the router needs to find
     /// which app owns a specific tool. It scans all drivers and
     /// calls `list_tools()` — consider caching the mapping.
-    pub async fn find_by_tool_name(&self, tool_name: &str) -> Option<(String, Arc<dyn McpTransport>)> {
+    pub async fn find_by_tool_name(
+        &self,
+        tool_name: &str,
+    ) -> Option<(String, Arc<dyn McpTransport>)> {
         let drivers = self.drivers.read().await;
         for (app_id, driver) in drivers.iter() {
             if let Ok(tools) = driver.list_tools().await {

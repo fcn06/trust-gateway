@@ -12,15 +12,21 @@ pub struct TokenStore {
 
 impl TokenStore {
     pub async fn new(js: jetstream::Context) -> anyhow::Result<Self> {
-        let kv = match js.create_key_value(jetstream::kv::Config {
-            bucket: "oauth_tokens".to_string(),
-            description: "Tenant OAuth tokens".to_string(),
-            history: 3,
-            ..Default::default()
-        }).await {
+        let kv = match js
+            .create_key_value(jetstream::kv::Config {
+                bucket: "oauth_tokens".to_string(),
+                description: "Tenant OAuth tokens".to_string(),
+                history: 3,
+                ..Default::default()
+            })
+            .await
+        {
             Ok(store) => store,
             Err(e) => {
-                tracing::warn!("⚠️ oauth_tokens KV bucket creation failed, trying to bind to existing: {}", e);
+                tracing::warn!(
+                    "⚠️ oauth_tokens KV bucket creation failed, trying to bind to existing: {}",
+                    e
+                );
                 js.get_key_value("oauth_tokens").await?
             }
         };
@@ -55,7 +61,7 @@ impl TokenStore {
                 Ok(Some(token))
             }
             Ok(None) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("Token store error: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("Token store error: {e}")),
         }
     }
 

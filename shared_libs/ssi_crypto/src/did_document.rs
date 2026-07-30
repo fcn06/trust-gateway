@@ -67,13 +67,13 @@ pub fn build_did_document(
     gateway_url: &str,
     target_id: &str,
 ) -> DidDocument {
-    let key_id = format!("{}#key-1", did);
-    let service_id = format!("{}#messaging", did);
+    let key_id = format!("{did}#key-1");
+    let service_id = format!("{did}#messaging");
 
     // Build the messaging service endpoint URL:
     // The endpoint includes the opaque TargetID so that senders can route
     // messages through the Global Gateway without knowing the recipient's identity.
-    let service_endpoint = format!("{}/ingress", gateway_url);
+    let service_endpoint = format!("{gateway_url}/ingress");
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -104,17 +104,19 @@ pub fn build_did_document(
 
 /// Serialize a DID Document to a JSON string.
 pub fn serialize_did_document(doc: &DidDocument) -> Result<String, String> {
-    serde_json::to_string_pretty(doc).map_err(|e| format!("Serialization failed: {}", e))
+    serde_json::to_string_pretty(doc).map_err(|e| format!("Serialization failed: {e}"))
 }
 
 /// Deserialize a DID Document from a JSON string.
 pub fn parse_did_document(json: &str) -> Result<DidDocument, String> {
-    serde_json::from_str(json).map_err(|e| format!("Deserialization failed: {}", e))
+    serde_json::from_str(json).map_err(|e| format!("Deserialization failed: {e}"))
 }
 
 /// Extract the Ed25519 public key hex from a DID Document.
 pub fn extract_public_key_hex(doc: &DidDocument) -> Option<String> {
-    doc.verification_method.first().map(|vm| vm.public_key_hex.clone())
+    doc.verification_method
+        .first()
+        .map(|vm| vm.public_key_hex.clone())
 }
 
 /// Extract the messaging service endpoint URL from a DID Document.

@@ -22,10 +22,7 @@ pub enum AuthError {
     ConflictingCredentials(String),
     /// REC-3: Session JWT presented where ExecutionGrant expected, or vice versa.
     #[error("Wrong token class: expected {expected}, got {actual}")]
-    WrongTokenClass {
-        expected: String,
-        actual: String,
-    },
+    WrongTokenClass { expected: String, actual: String },
 }
 
 /// The AuthResolver normalizes various incoming authentication payloads into a
@@ -83,7 +80,10 @@ impl AuthResolver {
     /// or `requester_did`, the request is rejected outright.
     ///
     /// If only one source is present, it behaves identically to `resolve()`.
-    pub async fn resolve_multi(&self, inputs: Vec<RawAuthInput>) -> Result<IdentityContext, AuthError> {
+    pub async fn resolve_multi(
+        &self,
+        inputs: Vec<RawAuthInput>,
+    ) -> Result<IdentityContext, AuthError> {
         if inputs.is_empty() {
             return Err(AuthError::MissingToken);
         }
@@ -166,7 +166,13 @@ impl AuthResolver {
         // Check if OAuth2 EdDSA JWT (e.g. alg == EdDSA and iss starts with http/https)
         if self.is_oauth2_eddsa_jwt(token) {
             let jwks_url_override = std::env::var("B2B_JWKS_URL").ok();
-            match crate::did::verify_oauth2_eddsa_jwt(token, &self.http_client, jwks_url_override.as_deref()).await {
+            match crate::did::verify_oauth2_eddsa_jwt(
+                token,
+                &self.http_client,
+                jwks_url_override.as_deref(),
+            )
+            .await
+            {
                 Ok(context) => return Ok(context),
                 Err(e) => {
                     tracing::warn!("OAuth2 EdDSA verification failed: {}", e);
@@ -180,27 +186,40 @@ impl AuthResolver {
     /// Checks if a JWT is an OAuth2 EdDSA bearer token (e.g. HTTP issuer or aud=b2b_agent)
     fn is_oauth2_eddsa_jwt(&self, token: &str) -> bool {
         let parts: Vec<&str> = token.split('.').collect();
-        if parts.len() != 3 { return false; }
-        
+        if parts.len() != 3 {
+            return false;
+        }
+
         use base64::Engine;
         let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
         let b64_pad = base64::engine::general_purpose::URL_SAFE;
-        
-        let alg_ok = if let Ok(decoded_header) = b64.decode(parts[0]).or_else(|_| b64_pad.decode(parts[0])) {
+
+        let alg_ok = if let Ok(decoded_header) =
+            b64.decode(parts[0]).or_else(|_| b64_pad.decode(parts[0]))
+        {
             if let Ok(header_json) = serde_json::from_slice::<serde_json::Value>(&decoded_header) {
                 header_json.get("alg").and_then(|v| v.as_str()) == Some("EdDSA")
-            } else { false }
-        } else { false };
-        
-        if !alg_ok { return false; }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !alg_ok {
+            return false;
+        }
 
         if let Ok(decoded_payload) = b64.decode(parts[1]).or_else(|_| b64_pad.decode(parts[1])) {
-            if let Ok(payload_json) = serde_json::from_slice::<serde_json::Value>(&decoded_payload) {
-                let iss_http = payload_json.get("iss")
+            if let Ok(payload_json) = serde_json::from_slice::<serde_json::Value>(&decoded_payload)
+            {
+                let iss_http = payload_json
+                    .get("iss")
                     .and_then(|v| v.as_str())
                     .map(|s| s.starts_with("http://") || s.starts_with("https://"))
                     .unwrap_or(false);
-                let is_b2b_aud = payload_json.get("aud")
+                let is_b2b_aud = payload_json
+                    .get("aud")
                     .and_then(|v| v.as_str())
                     .map(|s| s == "b2b_agent")
                     .unwrap_or(false);
@@ -213,24 +232,34 @@ impl AuthResolver {
     /// Checks if a JWT is signed by a DID using EdDSA (SSI session)
     fn is_did_signed_jwt(&self, token: &str) -> bool {
         let parts: Vec<&str> = token.split('.').collect();
-        if parts.len() != 3 { return false; }
-        
+        if parts.len() != 3 {
+            return false;
+        }
+
         use base64::Engine;
         let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
-        
+
         // 1. Check Header for alg: EdDSA
         let alg_ok = if let Ok(decoded_header) = b64.decode(parts[0]) {
             if let Ok(header_json) = serde_json::from_slice::<serde_json::Value>(&decoded_header) {
                 header_json.get("alg").and_then(|v| v.as_str()) == Some("EdDSA")
-            } else { false }
-        } else { false };
-        
-        if !alg_ok { return false; }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+
+        if !alg_ok {
+            return false;
+        }
 
         // 2. Check Payload for iss: did:*
         if let Ok(decoded_payload) = b64.decode(parts[1]) {
-            if let Ok(payload_json) = serde_json::from_slice::<serde_json::Value>(&decoded_payload) {
-                return payload_json.get("iss")
+            if let Ok(payload_json) = serde_json::from_slice::<serde_json::Value>(&decoded_payload)
+            {
+                return payload_json
+                    .get("iss")
                     .and_then(|v| v.as_str())
                     .map(|s| s.starts_with("did:"))
                     .unwrap_or(false);

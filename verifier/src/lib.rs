@@ -8,8 +8,6 @@ pub use grant::{
     DelegationChain, ExecutionBudget, ExecutionGrant, FinancialImpact, GrantClearance, SignedGrant,
 };
 
-
-
 /// High-level function to verify input arguments against a grant's input_hash.
 pub fn verify_input_binding(
     grant: &ExecutionGrant,

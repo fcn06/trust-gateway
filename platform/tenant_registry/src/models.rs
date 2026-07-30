@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 // Re-export core types for convenience
-pub use tenant_context::{Tenant, TenantContext, TenantTier, TenantStatus, KeyMode};
+pub use tenant_context::{KeyMode, TenantStatus, TenantTier};
 
 /// Request to create a new tenant.
 #[derive(Debug, Deserialize)]
@@ -70,10 +70,7 @@ impl LlmPolicy {
                 policy_id: format!("policy_pro_{}", uuid::Uuid::new_v4()),
                 default_model: "gpt-4o-mini".to_string(),
                 max_tokens_per_month: 1_000_000,
-                allowed_models: vec![
-                    "gpt-4o-mini".to_string(),
-                    "claude-3-haiku".to_string(),
-                ],
+                allowed_models: vec!["gpt-4o-mini".to_string(), "claude-3-haiku".to_string()],
                 escalation_model: Some("gpt-4o".to_string()),
                 max_tool_calls_per_minute: 30,
                 max_escalations_per_hour: 10,
@@ -82,10 +79,7 @@ impl LlmPolicy {
                 policy_id: format!("policy_compliance_{}", uuid::Uuid::new_v4()),
                 default_model: "gpt-4o".to_string(),
                 max_tokens_per_month: 5_000_000,
-                allowed_models: vec![
-                    "gpt-4o".to_string(),
-                    "claude-3-5-sonnet".to_string(),
-                ],
+                allowed_models: vec!["gpt-4o".to_string(), "claude-3-5-sonnet".to_string()],
                 escalation_model: Some("gpt-4o".to_string()),
                 max_tool_calls_per_minute: 60,
                 max_escalations_per_hour: 50,
@@ -116,7 +110,7 @@ pub struct ConnectionRecord {
     pub service_did: String,
     pub ucan_token: String,
     pub connected_at: i64,
-    pub status: String,  // "active", "revoked"
+    pub status: String, // "active", "revoked"
 }
 
 /// Request to register a new wallet connection.

@@ -49,6 +49,12 @@ pub struct OutboundDispatcher {
     pub twilio_from_number: Option<String>,
 }
 
+impl Default for OutboundDispatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OutboundDispatcher {
     pub fn new() -> Self {
         Self {
@@ -145,11 +151,10 @@ impl OutboundDispatcher {
         onboarding_url: &str,
     ) -> DeliveryStatus {
         let body = format!(
-            "🔐 Action Required: {}\n\n\
+            "🔐 Action Required: {action_summary}\n\n\
              Your approval is needed but you don't have a Sovereign Wallet connected. \
-             Upgrade to take control of your data:\n{}\n\n\
-             This approval request will expire in 5 minutes.",
-            action_summary, onboarding_url
+             Upgrade to take control of your data:\n{onboarding_url}\n\n\
+             This approval request will expire in 5 minutes."
         );
 
         let msg = OutboundMessage {
@@ -162,7 +167,8 @@ impl OutboundDispatcher {
 
         tracing::info!(
             "📲 [Wallet Fallback] Sending upgrade prompt via {} to {}",
-            channel, recipient
+            channel,
+            recipient
         );
 
         self.dispatch(&msg).await

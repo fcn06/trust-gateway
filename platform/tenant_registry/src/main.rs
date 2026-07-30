@@ -8,12 +8,12 @@
 //! - DELETE /tenants/:id      — Soft-delete tenant
 //! - GET    /tenants/:id/policy — Get tenant's LLM policy
 
+mod anchoring;
+mod audit_api;
 mod handlers;
 mod models;
 mod provisioner;
 mod store;
-mod audit_api;
-mod anchoring;
 
 use std::sync::Arc;
 

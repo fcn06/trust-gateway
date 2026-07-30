@@ -6,7 +6,10 @@
 //! NOTE: DIDComm v2 JWE functions have been removed in the hybrid pivot.
 //! Inter-user E2E encryption is now handled by OpenMLS.
 
-use chacha20poly1305::{aead::{Aead, KeyInit}, XChaCha20Poly1305, XNonce};
+use chacha20poly1305::{
+    aead::{Aead, KeyInit},
+    XChaCha20Poly1305, XNonce,
+};
 use hkdf::Hkdf;
 use sha2::Sha256;
 
@@ -17,7 +20,7 @@ use sha2::Sha256;
 pub fn xchacha20_encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<Vec<u8>, String> {
     let cipher = XChaCha20Poly1305::new(chacha20poly1305::Key::from_slice(key));
     let mut nonce_bytes = [0u8; 24];
-    getrandom::getrandom(&mut nonce_bytes).map_err(|e| format!("Nonce entropy error: {}", e))?;
+    getrandom::getrandom(&mut nonce_bytes).map_err(|e| format!("Nonce entropy error: {e}"))?;
     let nonce = XNonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
@@ -51,7 +54,8 @@ pub fn xchacha20_decrypt(key: &[u8; 32], packed: &[u8]) -> Result<Vec<u8>, Strin
 pub fn hkdf_derive_key(ikm: &[u8], info: &[u8]) -> Result<[u8; 32], String> {
     let hk = Hkdf::<Sha256>::new(None, ikm);
     let mut key = [0u8; 32];
-    hk.expand(info, &mut key).map_err(|_| "HKDF expansion failed")?;
+    hk.expand(info, &mut key)
+        .map_err(|_| "HKDF expansion failed")?;
     Ok(key)
 }
 

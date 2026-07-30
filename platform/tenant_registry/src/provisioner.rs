@@ -37,16 +37,13 @@ pub async fn provision_tenant_namespaces(
     let mut created = Vec::new();
 
     for bucket_suffix in TENANT_KV_BUCKETS {
-        let bucket_name = format!("tenant_{}_{}", tenant_id, bucket_suffix);
-        
+        let bucket_name = format!("tenant_{tenant_id}_{bucket_suffix}");
+
         let config = KvConfig {
             bucket: bucket_name.clone(),
-            description: format!(
-                "Tenant {} — {} store",
-                tenant_id, bucket_suffix
-            ),
+            description: format!("Tenant {tenant_id} — {bucket_suffix} store"),
             history: match *bucket_suffix {
-                "agent_audit" => 100,  // Keep more history for audit
+                "agent_audit" => 100, // Keep more history for audit
                 _ => 5,
             },
             ..Default::default()
@@ -60,9 +57,7 @@ pub async fn provision_tenant_namespaces(
             Err(e) => {
                 tracing::error!("❌ Failed to provision KV bucket {}: {}", bucket_name, e);
                 return Err(anyhow::anyhow!(
-                    "Failed to provision bucket {}: {}",
-                    bucket_name,
-                    e
+                    "Failed to provision bucket {bucket_name}: {e}"
                 ));
             }
         }
@@ -79,7 +74,7 @@ pub async fn deprovision_tenant_namespaces(
     tenant_id: &str,
 ) -> anyhow::Result<()> {
     for bucket_suffix in TENANT_KV_BUCKETS {
-        let bucket_name = format!("tenant_{}_{}", tenant_id, bucket_suffix);
+        let bucket_name = format!("tenant_{tenant_id}_{bucket_suffix}");
         match js.delete_key_value(&bucket_name).await {
             Ok(_) => tracing::info!("🗑️ Deleted KV bucket: {}", bucket_name),
             Err(e) => tracing::warn!("⚠️ Could not delete {}: {}", bucket_name, e),

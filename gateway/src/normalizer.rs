@@ -76,7 +76,7 @@ pub fn build_policy_display(decision: &ActionDecision, reason: &str) -> PolicyEv
             policy_id,
             reason: tier_reason,
         } => {
-            let tier_str = format!("{}", tier);
+            let tier_str = format!("{tier}");
             let effect = match tier {
                 trust_core::ApprovalTier::Tier0AutoAllow => "Auto-approved by policy".to_string(),
                 trust_core::ApprovalTier::Tier1PortalClick => {
@@ -194,19 +194,19 @@ fn normalize_shopify_refund(_action_name: &str, args: &serde_json::Value) -> Nor
         .and_then(|v| v.as_str())
         .unwrap_or("Not specified");
 
-    let title = format!("Refund {} {:.2} for order #{}", currency, amount, order_id);
+    let title = format!("Refund {currency} {amount:.2} for order #{order_id}");
 
     let mut fields = vec![
         BusinessDiffField {
             label: "Order".to_string(),
             before: None,
-            after: Some(format!("#{}", order_id)),
+            after: Some(format!("#{order_id}")),
             format: None,
         },
         BusinessDiffField {
             label: "Refund Amount".to_string(),
             before: None,
-            after: Some(format!("{:.2} {}", amount, currency)),
+            after: Some(format!("{amount:.2} {currency}")),
             format: Some("currency".to_string()),
         },
         BusinessDiffField {
@@ -255,7 +255,7 @@ fn normalize_shopify_order(action_name: &str, args: &serde_json::Value) -> Norma
         "Modify"
     };
 
-    let title = format!("{} Shopify order #{}", operation, order_id);
+    let title = format!("{operation} Shopify order #{order_id}");
 
     // Extract changed fields from args
     let fields = extract_fields_from_args(args, &["order_id", "orderId"]);
@@ -304,7 +304,7 @@ fn normalize_google_calendar(_action_name: &str, args: &serde_json::Value) -> No
         .and_then(|v| v.as_str())
         .unwrap_or("primary");
 
-    let title = format!("Create calendar event: {}", summary);
+    let title = format!("Create calendar event: {summary}");
 
     let mut fields = vec![
         BusinessDiffField {
@@ -356,7 +356,7 @@ fn normalize_google_calendar(_action_name: &str, args: &serde_json::Value) -> No
 // ── Generic Fallback ───────────────────────────────────
 
 fn normalize_generic(action_name: &str, args: &serde_json::Value) -> NormalizedAction {
-    let title = format!("Execute: {}", action_name);
+    let title = format!("Execute: {action_name}");
     let fields = extract_fields_from_args(args, &[]);
 
     NormalizedAction {

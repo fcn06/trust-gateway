@@ -14,10 +14,9 @@
 //! NOTE: Inter-user E2E encryption is handled by OpenMLS (in mls_session crate).
 //! This crate only provides symmetric encryption for vault internals.
 
+pub mod blind;
 pub mod did;
 pub mod did_document;
 pub mod encryption;
 pub mod signing;
-pub mod blind;
 pub mod ucan;
-

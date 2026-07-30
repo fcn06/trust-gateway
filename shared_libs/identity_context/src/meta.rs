@@ -243,7 +243,7 @@ mod tests {
         let encoder = base64::engine::general_purpose::URL_SAFE_NO_PAD;
         let header = encoder.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
         let payload = encoder.encode(serde_json::to_vec(claims).unwrap());
-        format!("{}.{}.sig", header, payload)
+        format!("{header}.{payload}.sig")
     }
 
     // UT-001: _meta extraction success
@@ -320,7 +320,7 @@ mod tests {
                 assert_eq!(meta, "tenant-B");
                 assert_eq!(jwt, "tenant-A");
             }
-            other => panic!("Expected TenantMismatch, got: {:?}", other),
+            other => panic!("Expected TenantMismatch, got: {other:?}"),
         }
     }
 

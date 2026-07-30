@@ -4,9 +4,9 @@
 //! for a given day, forming a verifiable anchor chain. Each day's anchor
 //! includes the previous day's hash for chain integrity.
 
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
 
 use crate::AppState;
 
@@ -35,7 +35,7 @@ pub async fn compute_daily_anchor(
     tenant_id: &str,
     date: &str,
 ) -> anyhow::Result<AuditAnchor> {
-    let bucket_name = format!("tenant_{}_agent_audit", tenant_id);
+    let bucket_name = format!("tenant_{tenant_id}_agent_audit");
     let audit_kv = state.js.get_key_value(&bucket_name).await?;
 
     let mut hasher = Sha256::new();
@@ -47,7 +47,7 @@ pub async fn compute_daily_anchor(
     while let Some(Ok(key)) = keys.next().await {
         if let Ok(Some(entry)) = audit_kv.get(&key).await {
             // Filter by date if the event has a `ts` field
-            if let Ok(event) = serde_json::from_slice::<serde_json::Value>(&entry.to_vec()) {
+            if let Ok(event) = serde_json::from_slice::<serde_json::Value>(&entry) {
                 if let Some(ts) = event.get("ts").and_then(|v| v.as_u64()) {
                     let event_date = chrono::DateTime::from_timestamp(ts as i64, 0)
                         .map(|dt| dt.format("%Y-%m-%d").to_string())
@@ -57,19 +57,22 @@ pub async fn compute_daily_anchor(
                     }
                 }
             }
-            hasher.update(&entry.to_vec());
+            hasher.update(&entry);
             event_count += 1;
         }
     }
 
     // Get previous day's anchor hash (chain link)
-    let anchor_bucket_name = format!("tenant_{}_audit_anchors", tenant_id);
-    let anchor_kv = state.js.create_key_value(async_nats::jetstream::kv::Config {
-        bucket: anchor_bucket_name.clone(),
-        description: format!("Audit anchors for tenant {}", tenant_id),
-        history: 1,
-        ..Default::default()
-    }).await?;
+    let anchor_bucket_name = format!("tenant_{tenant_id}_audit_anchors");
+    let anchor_kv = state
+        .js
+        .create_key_value(async_nats::jetstream::kv::Config {
+            bucket: anchor_bucket_name.clone(),
+            description: format!("Audit anchors for tenant {tenant_id}"),
+            history: 1,
+            ..Default::default()
+        })
+        .await?;
 
     // Compute previous date
     let prev_date = chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")?

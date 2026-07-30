@@ -15,7 +15,9 @@ impl NatsTransport {
         envelope: &TrustEnvelope<T>,
     ) -> Result<(), anyhow::Error> {
         let payload = serde_json::to_vec(envelope)?;
-        self.client.publish(subject.to_string(), payload.into()).await?;
+        self.client
+            .publish(subject.to_string(), payload.into())
+            .await?;
         Ok(())
     }
 }

@@ -271,7 +271,7 @@ async fn execute_approved_action(state: Arc<GatewayState>, record: ApprovalRecor
             tracing::error!("Daemon failed to issue grant for {}: {}", action_id, e);
             if let Err(mark_err) = state
                 .approval_store
-                .mark_execution_failed(&approval_id, &format!("Grant issuance failed: {}", e))
+                .mark_execution_failed(&approval_id, &format!("Grant issuance failed: {e}"))
                 .await
             {
                 tracing::error!(
@@ -358,7 +358,7 @@ async fn execute_approved_action(state: Arc<GatewayState>, record: ApprovalRecor
                     "requester_did": action_req.actor.requester_did,
                 });
                 // Notify both the generic result channel and the Host notification channel
-                let subject = format!("gateway.v1.action.result.{}", action_id);
+                let subject = format!("gateway.v1.action.result.{action_id}");
                 if let Ok(payload) = serde_json::to_vec(&result_msg) {
                     let _ = state.nats.publish(subject, payload.clone().into()).await;
                     let _ = state
@@ -436,7 +436,7 @@ async fn execute_approved_action(state: Arc<GatewayState>, record: ApprovalRecor
                     "owner_did": action_req.actor.owner_did,
                     "requester_did": action_req.actor.requester_did,
                 });
-                let subject = format!("gateway.v1.action.result.{}", action_id);
+                let subject = format!("gateway.v1.action.result.{action_id}");
                 if let Ok(payload) = serde_json::to_vec(&result_msg) {
                     let _ = state.nats.publish(subject, payload.clone().into()).await;
                     let _ = state
@@ -456,7 +456,7 @@ async fn execute_approved_action(state: Arc<GatewayState>, record: ApprovalRecor
             // Mark as failed (CAS-protected — prevents overwriting terminal states)
             if let Err(mark_err) = state
                 .approval_store
-                .mark_execution_failed(&approval_id, &format!("{}", e))
+                .mark_execution_failed(&approval_id, &format!("{e}"))
                 .await
             {
                 tracing::error!(
@@ -492,7 +492,7 @@ async fn execute_approved_action(state: Arc<GatewayState>, record: ApprovalRecor
                 "owner_did": action_req.actor.owner_did,
                 "requester_did": action_req.actor.requester_did,
             });
-            let subject = format!("gateway.v1.action.result.{}", action_id);
+            let subject = format!("gateway.v1.action.result.{action_id}");
             if let Ok(payload) = serde_json::to_vec(&result_msg) {
                 let _ = state.nats.publish(subject, payload.clone().into()).await;
                 let _ = state
@@ -512,18 +512,27 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
     tracing::info!("🧹 Escalation sweeper started (reactive NATS KV watch + interval sweep)");
     let timeout = std::time::Duration::from_secs(3600); // 1 hour TTL
 
-    let pending_approvals = Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::<String, ApprovalRecord>::new()));
+    let pending_approvals = Arc::new(tokio::sync::Mutex::new(std::collections::HashMap::<
+        String,
+        ApprovalRecord,
+    >::new()));
 
     // Spawn the watch loop
     let pending_clone = pending_approvals.clone();
     let state_clone = state.clone();
-    
+
     tokio::spawn(async move {
         loop {
-            let store = match state_clone.jetstream.get_key_value("approval_records").await {
+            let store = match state_clone
+                .jetstream
+                .get_key_value("approval_records")
+                .await
+            {
                 Ok(s) => s,
                 Err(e) => {
-                    tracing::error!("❌ Sweeper failed to get approval_records store: {e}. Retrying in 5s...");
+                    tracing::error!(
+                        "❌ Sweeper failed to get approval_records store: {e}. Retrying in 5s..."
+                    );
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     continue;
                 }
@@ -532,7 +541,9 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
             let mut watcher = match store.watch(">").await {
                 Ok(w) => w,
                 Err(e) => {
-                    tracing::error!("❌ Sweeper failed to watch approval_records: {e}. Retrying in 5s...");
+                    tracing::error!(
+                        "❌ Sweeper failed to watch approval_records: {e}. Retrying in 5s..."
+                    );
                     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
                     continue;
                 }
@@ -551,7 +562,7 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
                 };
 
                 let mut pending = pending_clone.lock().await;
-                
+
                 use async_nats::jetstream::kv::Operation;
                 match entry.operation {
                     Operation::Delete | Operation::Purge => {
@@ -559,7 +570,9 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
                     }
                     Operation::Put => {
                         if let Ok(record) = serde_json::from_slice::<ApprovalRecord>(&entry.value) {
-                            if record.status == ApprovalStatus::Pending || record.status == ApprovalStatus::PendingProof {
+                            if record.status == ApprovalStatus::Pending
+                                || record.status == ApprovalStatus::PendingProof
+                            {
                                 pending.insert(entry.key.clone(), record);
                             } else {
                                 pending.remove(&entry.key);
@@ -570,7 +583,7 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
                     }
                 }
             }
-            
+
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
     });
@@ -596,7 +609,10 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
 
         let mut swept = 0;
         for record in to_sweep {
-            tracing::info!("⏳ Auto-denying stale pending approval: {}", record.approval_id);
+            tracing::info!(
+                "⏳ Auto-denying stale pending approval: {}",
+                record.approval_id
+            );
 
             let result = ApprovalResult {
                 resolved_by: "system_sweeper".to_string(),
@@ -605,9 +621,13 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
                 resolved_at: chrono::Utc::now(),
             };
 
-            if let Ok(_) = state.approval_store.mark_denied(&record.approval_id, result).await {
+            if let Ok(_) = state
+                .approval_store
+                .mark_denied(&record.approval_id, result)
+                .await
+            {
                 swept += 1;
-                
+
                 // Publish result to unblock waiting agent
                 let result_msg = serde_json::json!({
                     "tool_name": record.action_request.action.name,

@@ -142,7 +142,7 @@ pub async fn execute_tool(
                     return Ok(Json(ToolExecuteResult {
                         success: false,
                         content: json!({}),
-                        error: Some(format!("ExecutionGrant validation failed: {}", e)),
+                        error: Some(format!("ExecutionGrant validation failed: {e}")),
                     }));
                 }
             }
@@ -261,7 +261,7 @@ async fn execute_google_calendar_list(
         .map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
-                format!("Google Calendar API error: {}", e),
+                format!("Google Calendar API error: {e}"),
             )
         })?;
 
@@ -269,7 +269,7 @@ async fn execute_google_calendar_list(
     let data: serde_json::Value = resp.json().await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse Calendar response: {}", e),
+            format!("Failed to parse Calendar response: {e}"),
         )
     })?;
 
@@ -278,7 +278,7 @@ async fn execute_google_calendar_list(
         return Ok(Json(ToolExecuteResult {
             success: false,
             content: data.clone(),
-            error: Some(format!("Google API returned error {}", status)),
+            error: Some(format!("Google API returned error {status}")),
         }));
     }
 
@@ -338,8 +338,8 @@ async fn execute_google_calendar_create(
         }
     };
 
-    let (start_dt, end_dt) = parse_calendar_start_end(args)
-        .map_err(|e| (StatusCode::BAD_REQUEST, e))?;
+    let (start_dt, end_dt) =
+        parse_calendar_start_end(args).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
 
     let event_body = json!({
         "summary": args["summary"].as_str().unwrap_or("Untitled Event"),
@@ -358,7 +358,7 @@ async fn execute_google_calendar_create(
         .map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
-                format!("Google Calendar API error: {}", e),
+                format!("Google Calendar API error: {e}"),
             )
         })?;
 
@@ -366,7 +366,7 @@ async fn execute_google_calendar_create(
     let data: serde_json::Value = resp.json().await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse Calendar response: {}", e),
+            format!("Failed to parse Calendar response: {e}"),
         )
     })?;
 
@@ -375,7 +375,7 @@ async fn execute_google_calendar_create(
         return Ok(Json(ToolExecuteResult {
             success: false,
             content: data.clone(),
-            error: Some(format!("Google API returned error {}", status)),
+            error: Some(format!("Google API returned error {status}")),
         }));
     }
 
@@ -497,7 +497,7 @@ impl GrantValidator {
                     if self.hmac_key.is_some() {
                         tracing::debug!("Ed25519 verification failed, trying HMAC: {}", e);
                     } else {
-                        return Err(format!("Grant validation failed (Ed25519): {}", e));
+                        return Err(format!("Grant validation failed (Ed25519): {e}"));
                     }
                 }
             }
@@ -508,7 +508,7 @@ impl GrantValidator {
             tracing::warn!("⚠️ Grant validation fell back to HMAC. HMAC is deprecated and for development only (SEC-1).");
             let claims = hmac_key
                 .verify_token::<ExecutionGrant>(token, Some(options))
-                .map_err(|e| format!("Grant validation failed (HMAC): {}", e))?;
+                .map_err(|e| format!("Grant validation failed (HMAC): {e}"))?;
 
             let now = chrono::Utc::now().timestamp();
             if claims.custom.expires_at < now {

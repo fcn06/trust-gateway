@@ -22,8 +22,13 @@ impl AuthVerifier {
         };
         let claims = key.verify_token::<NoCustomClaims>(token, Some(options))?;
 
-        let subject = claims.subject.ok_or_else(|| anyhow::anyhow!("Missing subject claim"))?;
-        let expires_at = claims.expires_at.ok_or_else(|| anyhow::anyhow!("Missing exp claim"))?.as_secs();
+        let subject = claims
+            .subject
+            .ok_or_else(|| anyhow::anyhow!("Missing subject claim"))?;
+        let expires_at = claims
+            .expires_at
+            .ok_or_else(|| anyhow::anyhow!("Missing exp claim"))?
+            .as_secs();
 
         Ok(VerifiedJwt {
             subject,

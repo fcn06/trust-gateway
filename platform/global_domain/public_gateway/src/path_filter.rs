@@ -1,14 +1,6 @@
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-    http::StatusCode,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
 
-pub async fn security_filter(
-    request: Request,
-    next: Next,
-) -> Result<Response, StatusCode> {
+pub async fn security_filter(request: Request, next: Next) -> Result<Response, StatusCode> {
     let path = request.uri().path();
 
     if is_malicious_path(path) {
@@ -27,17 +19,16 @@ fn is_malicious_path(path: &str) -> bool {
     // Block hidden files/directories except .well-known
     let segments: Vec<&str> = path.split('/').collect();
     for segment in segments {
-        if segment.starts_with('.') && !segment.is_empty() {
-            if segment != ".well-known" {
+        if segment.starts_with('.') && !segment.is_empty()
+            && segment != ".well-known" {
                 return true;
             }
-        }
     }
 
     let path_lower = path.to_lowercase();
     let blacklisted_extensions = [
-        ".php", ".aspx", ".asp", ".jsp", ".cgi", ".env", 
-        ".yaml", ".yml", ".ini", ".conf", ".sql", ".bak"
+        ".php", ".aspx", ".asp", ".jsp", ".cgi", ".env", ".yaml", ".yml", ".ini", ".conf", ".sql",
+        ".bak",
     ];
     for ext in &blacklisted_extensions {
         if path_lower.ends_with(ext) {
@@ -46,8 +37,13 @@ fn is_malicious_path(path: &str) -> bool {
     }
 
     let blacklisted_substrings = [
-        "wp-admin", "wp-login", "wp-content", "etc/passwd", 
-        "cgi-bin", "autodiscover", "xmlrpc"
+        "wp-admin",
+        "wp-login",
+        "wp-content",
+        "etc/passwd",
+        "cgi-bin",
+        "autodiscover",
+        "xmlrpc",
     ];
     for sub in &blacklisted_substrings {
         if path_lower.contains(sub) {

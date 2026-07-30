@@ -7,12 +7,11 @@
 // expire.
 // ─────────────────────────────────────────────────────────────
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use serde_json::json;
 use async_nats::jetstream::kv::Store;
 use futures::StreamExt;
-use trust_core::oauth_token::{OAuthToken, OAuthProviderConfig, TokenBroker, TokenError};
+use serde_json::json;
+use std::collections::HashMap;
+use trust_core::oauth_token::{OAuthProviderConfig, OAuthToken, TokenBroker, TokenError};
 
 /// NATS KV-backed token broker with inline auto-refresh capabilities.
 pub struct NatsTokenBroker {
@@ -24,18 +23,20 @@ pub struct NatsTokenBroker {
 
 impl NatsTokenBroker {
     /// Create a new NatsTokenBroker instance.
-    pub fn new(
-        kv: Store,
-        nats: async_nats::Client,
-        http_client: reqwest::Client,
-    ) -> Self {
+    pub fn new(kv: Store, nats: async_nats::Client, http_client: reqwest::Client) -> Self {
         let config_path = std::env::var("OAUTH_PROVIDERS_CONFIG_PATH")
             .unwrap_or_else(|_| "connector_mcp_server/config/oauth_providers.toml".to_string());
 
-        let providers = match trust_core::oauth_provider_config::OAuthProvidersFile::load_from_file(&config_path) {
+        let providers = match trust_core::oauth_provider_config::OAuthProvidersFile::load_from_file(
+            &config_path,
+        ) {
             Ok(file) => {
                 let map = file.to_map();
-                tracing::info!("🔑 Loaded {} OAuth providers from {}", map.len(), config_path);
+                tracing::info!(
+                    "🔑 Loaded {} OAuth providers from {}",
+                    map.len(),
+                    config_path
+                );
                 map
             }
             Err(e) => {
@@ -92,7 +93,7 @@ impl NatsTokenBroker {
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
-            anyhow::bail!("OAuth token URL returned status {}: {}", status, body);
+            anyhow::bail!("OAuth token URL returned status {status}: {body}");
         }
 
         #[derive(serde::Deserialize)]
@@ -161,8 +162,7 @@ impl TokenBroker for NatsTokenBroker {
 
     async fn store_token(&self, token: &OAuthToken) -> Result<(), TokenError> {
         let key = token.kv_key();
-        let val = serde_json::to_vec(token)
-            .map_err(|e| TokenError::StoreError(e.to_string()))?;
+        let val = serde_json::to_vec(token).map_err(|e| TokenError::StoreError(e.to_string()))?;
 
         self.kv
             .put(&key, val.into())
@@ -179,7 +179,9 @@ impl TokenBroker for NatsTokenBroker {
     ) -> Result<OAuthToken, TokenError> {
         let key = OAuthToken::make_kv_key(tenant_id, provider);
         let provider_config = self.providers.get(provider).ok_or_else(|| {
-            TokenError::RefreshFailed(format!("No provider configuration found for '{}'", provider))
+            TokenError::RefreshFailed(format!(
+                "No provider configuration found for '{provider}'"
+            ))
         })?;
 
         // Attempt refresh loop (CAS updates)
@@ -211,7 +213,10 @@ impl TokenBroker for NatsTokenBroker {
                 TokenError::RefreshFailed("No refresh token available".to_string())
             })?;
 
-            match self.refresh_token_oauth(provider_config, refresh_token_str).await {
+            match self
+                .refresh_token_oauth(provider_config, refresh_token_str)
+                .await
+            {
                 Ok((new_access, new_refresh, expires_at)) => {
                     stored_token.access_token = new_access;
                     if let Some(ref rt) = new_refresh {
@@ -242,7 +247,7 @@ impl TokenBroker for NatsTokenBroker {
                 }
                 Err(e) => {
                     // Fall back to NATS event to signal UI re-authorization
-                    let error_msg = format!("Refresh exchange failed: {}", e);
+                    let error_msg = format!("Refresh exchange failed: {e}");
                     let event = json!({
                         "tenant_id": tenant_id,
                         "provider_id": provider,
@@ -261,15 +266,12 @@ impl TokenBroker for NatsTokenBroker {
         }
 
         Err(TokenError::RefreshFailed(
-            "CAS revision updates failed repeatedly due to concurrent refresh operations".to_string(),
+            "CAS revision updates failed repeatedly due to concurrent refresh operations"
+                .to_string(),
         ))
     }
 
-    async fn revoke_token(
-        &self,
-        tenant_id: &str,
-        provider: &str,
-    ) -> Result<(), TokenError> {
+    async fn revoke_token(&self, tenant_id: &str, provider: &str) -> Result<(), TokenError> {
         let key = OAuthToken::make_kv_key(tenant_id, provider);
         self.kv
             .delete(&key)
@@ -278,10 +280,7 @@ impl TokenBroker for NatsTokenBroker {
         Ok(())
     }
 
-    async fn list_connected_providers(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<String>, TokenError> {
+    async fn list_connected_providers(&self, tenant_id: &str) -> Result<Vec<String>, TokenError> {
         let mut keys = self
             .kv
             .keys()

@@ -13,8 +13,8 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use trust_core::envelope::{GrantedAction, TrustEnvelope};
 use trust_core::transport::{
-    McpTransport, TransportDispatchRequest, TransportDispatchResult,
-    TransportError, TransportToolDefinition, TransportType,
+    McpTransport, TransportDispatchRequest, TransportDispatchResult, TransportError,
+    TransportToolDefinition, TransportType,
 };
 
 /// NATS JetStream transport driver.
@@ -41,7 +41,7 @@ impl NatsMcpDriver {
         policy_fingerprint: impl Into<String>,
     ) -> Self {
         let profile = profile.into();
-        let id = format!("nats_{}", profile);
+        let id = format!("nats_{profile}");
         Self {
             nats,
             profile,
@@ -84,7 +84,7 @@ impl McpTransport for NatsMcpDriver {
             .nats
             .subscribe(reply_subject.clone())
             .await
-            .map_err(|e| TransportError::ConnectionFailed(format!("Failed to subscribe: {}", e)))?;
+            .map_err(|e| TransportError::ConnectionFailed(format!("Failed to subscribe: {e}")))?;
 
         // 2. Construct the canonical TrustEnvelope<GrantedAction>.
         let granted_action = GrantedAction {
@@ -96,69 +96,59 @@ impl McpTransport for NatsMcpDriver {
             reply_subject: reply_subject.clone(),
         };
 
-        let envelope = TrustEnvelope::new(
-            &request.tenant_id,
-            &request.action_id,
-            granted_action,
-        )
-        .with_policy_fingerprint(&self.policy_fingerprint);
+        let envelope = TrustEnvelope::new(&request.tenant_id, &request.action_id, granted_action)
+            .with_policy_fingerprint(&self.policy_fingerprint);
 
         // 3. Publish to the executor's invoke subject.
-        let publish_subject = format!(
-            "exec.v1.{}.{}.invoke",
-            request.tenant_id, self.profile
-        );
+        let publish_subject = format!("exec.v1.{}.{}.invoke", request.tenant_id, self.profile);
         let payload = serde_json::to_vec(&envelope)
-            .map_err(|e| TransportError::ProtocolError(format!("Serialization failed: {}", e)))?;
+            .map_err(|e| TransportError::ProtocolError(format!("Serialization failed: {e}")))?;
 
         self.nats
             .publish(publish_subject, payload.into())
             .await
-            .map_err(|e| TransportError::ConnectionFailed(format!("Publish failed: {}", e)))?;
+            .map_err(|e| TransportError::ConnectionFailed(format!("Publish failed: {e}")))?;
 
         // 4. Wait for response with timeout.
-        let result = match tokio::time::timeout(
-            std::time::Duration::from_secs(45),
-            subscription.next(),
-        )
-        .await
-        {
-            Ok(Some(msg)) => {
-                let response: serde_json::Value = serde_json::from_slice(&msg.payload)
-                    .map_err(|e| {
-                        TransportError::ProtocolError(format!(
-                            "Failed to parse response: {}",
-                            e
-                        ))
+        let result =
+            match tokio::time::timeout(std::time::Duration::from_secs(45), subscription.next())
+                .await
+            {
+                Ok(Some(msg)) => {
+                    let response: serde_json::Value = serde_json::from_slice(&msg.payload)
+                        .map_err(|e| {
+                            TransportError::ProtocolError(format!(
+                                "Failed to parse response: {e}"
+                            ))
+                        })?;
+
+                    let payload = response.get("payload").ok_or_else(|| {
+                        TransportError::ProtocolError("Missing 'payload' in response".into())
                     })?;
 
-                let payload = response.get("payload").ok_or_else(|| {
-                    TransportError::ProtocolError("Missing 'payload' in response".into())
-                })?;
+                    let output = payload.get("output").cloned();
+                    let error = payload
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
+                    let success = error.is_none()
+                        && payload
+                            .get("success")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true);
 
-                let output = payload.get("output").cloned();
-                let error = payload
-                    .get("error")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string());
-                let success = error.is_none()
-                    && payload
-                        .get("success")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(true);
-
-                Ok(TransportDispatchResult {
-                    success,
-                    output,
-                    error,
-                    duration_ms: start.elapsed().as_millis() as u64,
-                })
-            }
-            Ok(None) => Err(TransportError::Unavailable(
-                "Executor disconnected before replying".into(),
-            )),
-            Err(_) => Err(TransportError::Timeout(45)),
-        };
+                    Ok(TransportDispatchResult {
+                        success,
+                        output,
+                        error,
+                        duration_ms: start.elapsed().as_millis() as u64,
+                    })
+                }
+                Ok(None) => Err(TransportError::Unavailable(
+                    "Executor disconnected before replying".into(),
+                )),
+                Err(_) => Err(TransportError::Timeout(45)),
+            };
 
         // 5. Explicitly drop subscription to avoid leaks.
         drop(subscription);
@@ -168,9 +158,7 @@ impl McpTransport for NatsMcpDriver {
 
     async fn health_check(&self) -> Result<(), TransportError> {
         // Verify NATS connection is alive.
-        if self.nats.connection_state()
-            == async_nats::connection::State::Disconnected
-        {
+        if self.nats.connection_state() == async_nats::connection::State::Disconnected {
             return Err(TransportError::Unavailable(
                 "NATS connection is disconnected".into(),
             ));

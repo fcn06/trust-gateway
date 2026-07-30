@@ -5,7 +5,8 @@ use trust_egress::EgressFilter;
 use trust_executor_sdk::{verify_input_hash, Executor};
 use trust_model::{ExecutionResult, GrantedAction, TransactionOutcomeState};
 
-pub type ToolHandler = Arc<dyn Fn(&serde_json::Value) -> Result<serde_json::Value, String> + Send + Sync>;
+pub type ToolHandler =
+    Arc<dyn Fn(&serde_json::Value) -> Result<serde_json::Value, String> + Send + Sync>;
 
 pub struct ReferenceExecutor {
     handlers: Arc<Mutex<HashMap<String, ToolHandler>>>,
@@ -38,16 +39,16 @@ impl ReferenceExecutor {
     }
 
     pub fn register_handler(&mut self, tool_name: &str, handler: ToolHandler) {
-        self.handlers.lock().unwrap().insert(tool_name.to_string(), handler);
+        self.handlers
+            .lock()
+            .unwrap()
+            .insert(tool_name.to_string(), handler);
     }
 }
 
 #[async_trait]
 impl Executor for ReferenceExecutor {
-    async fn execute(
-        &self,
-        action: GrantedAction,
-    ) -> Result<ExecutionResult, anyhow::Error> {
+    async fn execute(&self, action: GrantedAction) -> Result<ExecutionResult, anyhow::Error> {
         let start = std::time::Instant::now();
 
         // 1. Verify input_hash binding

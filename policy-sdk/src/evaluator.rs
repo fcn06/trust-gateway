@@ -29,13 +29,20 @@ impl PolicyEvaluator {
         }
 
         // Layer 2: Organization Policy
-        if self.policy.organization.blacklisted_tools.contains(&tool_name.to_string()) {
+        if self
+            .policy
+            .organization
+            .blacklisted_tools
+            .contains(&tool_name.to_string())
+        {
             return PolicyOutcome::Deny {
-                reason: format!("Organization Policy: Tool '{}' is blacklisted", tool_name),
+                reason: format!("Organization Policy: Tool '{tool_name}' is blacklisted"),
             };
         }
         if let Some(amt) = amount_usd {
-            if amt > self.policy.organization.max_financial_limit_usd && self.policy.organization.max_financial_limit_usd > 0 {
+            if amt > self.policy.organization.max_financial_limit_usd
+                && self.policy.organization.max_financial_limit_usd > 0
+            {
                 return PolicyOutcome::Deny {
                     reason: format!(
                         "Organization Policy: Transaction amount (${}) exceeds organizational cap (${})",
@@ -48,12 +55,23 @@ impl PolicyEvaluator {
         // Layer 3: Agent Policy
         if !self.policy.agent.agent_id.is_empty() && self.policy.agent.agent_id != agent_id {
             return PolicyOutcome::Deny {
-                reason: format!("Agent Policy: Agent ID mismatch (expected '{}', got '{}')", self.policy.agent.agent_id, agent_id),
+                reason: format!(
+                    "Agent Policy: Agent ID mismatch (expected '{}', got '{}')",
+                    self.policy.agent.agent_id, agent_id
+                ),
             };
         }
-        if !self.policy.agent.allowed_tools.is_empty() && !self.policy.agent.allowed_tools.contains(&tool_name.to_string()) {
+        if !self.policy.agent.allowed_tools.is_empty()
+            && !self
+                .policy
+                .agent
+                .allowed_tools
+                .contains(&tool_name.to_string())
+        {
             return PolicyOutcome::Deny {
-                reason: format!("Agent Policy: Tool '{}' not permitted for agent profile", tool_name),
+                reason: format!(
+                    "Agent Policy: Tool '{tool_name}' not permitted for agent profile"
+                ),
             };
         }
 
@@ -81,7 +99,9 @@ impl PolicyEvaluator {
     ) -> PolicyOutcome {
         let amount_usd = op_attrs.amount.as_ref().map(|m| m.amount_cents / 100);
 
-        if op_attrs.operation_kind == "financial_mutation" || op_attrs.operation_kind == "destructive" {
+        if op_attrs.operation_kind == "financial_mutation"
+            || op_attrs.operation_kind == "destructive"
+        {
             if let Some(threshold) = self.policy.transaction.human_approval_threshold_usd {
                 let amt = amount_usd.unwrap_or(0);
                 if amt >= threshold {
@@ -95,4 +115,3 @@ impl PolicyEvaluator {
         self.evaluate(tenant_id, agent_id, tool_name, amount_usd)
     }
 }
-

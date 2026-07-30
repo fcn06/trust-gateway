@@ -12,8 +12,8 @@
 // repository and override these at composition time.
 // ─────────────────────────────────────────────────────────────
 
-pub mod notifier;
-pub mod identity;
-pub mod transport;
-pub mod tenant;
 pub mod credentials;
+pub mod identity;
+pub mod notifier;
+pub mod tenant;
+pub mod transport;

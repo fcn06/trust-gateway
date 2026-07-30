@@ -63,14 +63,14 @@ pub async fn webhook_post_handler(
 
     // 2. Build Policy Evaluation Context (ActionRequest)
     let tenant_id = "system".to_string(); // Webhooks generally operate at a system/tenant level
-    let action_name = format!("webhook.{}", provider);
+    let action_name = format!("webhook.{provider}");
 
     let action_req = ActionRequest {
         action_id: event_id.clone(),
         tenant_id: tenant_id.clone(),
         actor: ActorContext {
             owner_did: "system".to_string(),
-            requester_did: format!("webhook:{}", provider),
+            requester_did: format!("webhook:{provider}"),
             user_did: None,
             session_jti: event_id.clone(),
             auth_level: AuthLevel::Level3Session,
@@ -132,7 +132,7 @@ pub async fn webhook_post_handler(
 
     // 4. Dispatch to Agent
     // Since it's allowed, we push the event to NATS so the agent can react to it.
-    let subject = format!("mcp.v1.webhook.{}", provider);
+    let subject = format!("mcp.v1.webhook.{provider}");
     let message = serde_json::json!({
         "event_id": event_id,
         "provider": provider,

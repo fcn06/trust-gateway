@@ -16,9 +16,12 @@ fn main() -> Result<()> {
     let valid_path = vectors_dir.join("valid_grant.json");
     if valid_path.exists() {
         let content = fs::read_to_string(&valid_path)?;
-        let grant: ExecutionGrant = serde_json::from_str(&content)
-            .context("Failed to parse valid_grant.json")?;
-        println!("[PASS] valid_grant.json loaded successfully. Grant ID: {}", grant.grant_id);
+        let grant: ExecutionGrant =
+            serde_json::from_str(&content).context("Failed to parse valid_grant.json")?;
+        println!(
+            "[PASS] valid_grant.json loaded successfully. Grant ID: {}",
+            grant.grant_id
+        );
     }
 
     // 2. Expired Grant
@@ -42,7 +45,9 @@ fn main() -> Result<()> {
         let dummy_args = serde_json::json!({"test": "data"});
         let result = verify_input_binding(&grant, &grant.allowed_action, &dummy_args);
         if result.is_err() {
-            println!("[PASS] input_mismatch_grant.json correctly failed input binding verification.");
+            println!(
+                "[PASS] input_mismatch_grant.json correctly failed input binding verification."
+            );
         } else {
             eprintln!("[FAIL] input_mismatch_grant.json unexpectedly passed verification!");
         }
@@ -63,5 +68,3 @@ fn main() -> Result<()> {
     println!("=== Conformance Check Complete ===");
     Ok(())
 }
-
-

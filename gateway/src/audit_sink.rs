@@ -75,7 +75,7 @@ impl JetStreamAuditSink {
                     Self::persist_chain_head_static(&js_clone, &action_id, hash).await;
                 }
 
-                let subject = format!("audit.action.{}", action_id);
+                let subject = format!("audit.action.{action_id}");
                 let json = match serde_json::to_string(&event) {
                     Ok(j) => j,
                     Err(e) => {
@@ -86,17 +86,15 @@ impl JetStreamAuditSink {
 
                 // Try JetStream durable publish first
                 match js_clone.publish(subject.clone(), json.clone().into()).await {
-                    Ok(ack_future) => {
-                        match ack_future.await {
-                            Ok(_) => continue,
-                            Err(e) => {
-                                tracing::warn!(
+                    Ok(ack_future) => match ack_future.await {
+                        Ok(_) => continue,
+                        Err(e) => {
+                            tracing::warn!(
                                     "JetStream ack failed for audit event (falling back to plain NATS): {}",
                                     e
                                 );
-                            }
                         }
-                    }
+                    },
                     Err(e) => {
                         tracing::warn!(
                             "JetStream publish failed for audit event (falling back to plain NATS): {}",
@@ -120,7 +118,10 @@ impl JetStreamAuditSink {
     }
 
     /// Load the persisted chain head for an action_id from NATS KV.
-    async fn load_chain_head_static(js: &async_nats::jetstream::Context, action_id: &str) -> Option<String> {
+    async fn load_chain_head_static(
+        js: &async_nats::jetstream::Context,
+        action_id: &str,
+    ) -> Option<String> {
         match js.get_key_value(CHAIN_HEAD_BUCKET).await {
             Ok(store) => match store.get(action_id).await {
                 Ok(Some(entry)) => String::from_utf8(entry.to_vec()).ok(),
@@ -131,7 +132,11 @@ impl JetStreamAuditSink {
     }
 
     /// Persist the chain head for an action_id to NATS KV.
-    async fn persist_chain_head_static(js: &async_nats::jetstream::Context, action_id: &str, hash: &str) {
+    async fn persist_chain_head_static(
+        js: &async_nats::jetstream::Context,
+        action_id: &str,
+        hash: &str,
+    ) {
         let hash_owned = hash.as_bytes().to_vec();
         match js.get_key_value(CHAIN_HEAD_BUCKET).await {
             Ok(store) => {

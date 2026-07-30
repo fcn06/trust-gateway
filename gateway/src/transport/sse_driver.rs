@@ -10,11 +10,10 @@
 // ─────────────────────────────────────────────────────────────
 
 use async_trait::async_trait;
-use std::sync::Arc;
 use tokio::sync::RwLock;
 use trust_core::transport::{
-    McpTransport, TransportDispatchRequest, TransportDispatchResult,
-    TransportError, TransportToolDefinition, TransportType,
+    McpTransport, TransportDispatchRequest, TransportDispatchResult, TransportError,
+    TransportToolDefinition, TransportType,
 };
 
 /// SSE transport driver for external MCP servers.
@@ -92,12 +91,18 @@ impl McpTransport for SseMcpDriver {
         // Build the SSE endpoint URL.
         let mut sse_uri = self.base_url.trim_end_matches('/').to_string();
         if !sse_uri.ends_with("/sse") {
-            sse_uri = format!("{}/sse", sse_uri);
+            sse_uri = format!("{sse_uri}/sse");
         }
 
         // Create a new MCP client session for this invocation.
-        let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
-        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(self.http_client.clone(), config);
+        let config =
+            rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(
+                sse_uri,
+            );
+        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(
+            self.http_client.clone(),
+            config,
+        );
 
         let client_info = rmcp::model::InitializeRequestParams::new(
             rmcp::model::ClientCapabilities::default(),
@@ -107,7 +112,7 @@ impl McpTransport for SseMcpDriver {
         let running = rmcp::serve_client(client_info, transport)
             .await
             .map_err(|e| {
-                TransportError::ConnectionFailed(format!("MCP handshake failed: {}", e))
+                TransportError::ConnectionFailed(format!("MCP handshake failed: {e}"))
             })?;
 
         let mcp_client = running.clone();
@@ -144,25 +149,18 @@ impl McpTransport for SseMcpDriver {
                     .join("\n");
 
                 let is_error = call_result.is_error.unwrap_or(false);
-                let output_json =
-                    serde_json::from_str::<serde_json::Value>(&output_text).unwrap_or_else(|_| {
-                        serde_json::json!([{"type": "text", "text": output_text}])
-                    });
+                let output_json = serde_json::from_str::<serde_json::Value>(&output_text)
+                    .unwrap_or_else(|_| serde_json::json!([{"type": "text", "text": output_text}]));
 
                 Ok(TransportDispatchResult {
                     success: !is_error,
                     output: Some(output_json),
-                    error: if is_error {
-                        Some(output_text)
-                    } else {
-                        None
-                    },
+                    error: if is_error { Some(output_text) } else { None },
                     duration_ms: start.elapsed().as_millis() as u64,
                 })
             }
             Ok(Err(e)) => Err(TransportError::ProtocolError(format!(
-                "Tool call failed: {}",
-                e
+                "Tool call failed: {e}"
             ))),
             Err(_) => Err(TransportError::Timeout(30)),
         };
@@ -193,8 +191,7 @@ impl McpTransport for SseMcpDriver {
                 resp.status()
             ))),
             Err(e) => Err(TransportError::ConnectionFailed(format!(
-                "Health check failed: {}",
-                e
+                "Health check failed: {e}"
             ))),
         }
     }
@@ -208,14 +205,22 @@ impl McpTransport for SseMcpDriver {
 
 impl SseMcpDriver {
     /// Internal tool discovery using the MCP protocol.
-    async fn discover_tools_internal(&self) -> Result<Vec<TransportToolDefinition>, TransportError> {
+    async fn discover_tools_internal(
+        &self,
+    ) -> Result<Vec<TransportToolDefinition>, TransportError> {
         let mut sse_uri = self.base_url.trim_end_matches('/').to_string();
         if !sse_uri.ends_with("/sse") {
-            sse_uri = format!("{}/sse", sse_uri);
+            sse_uri = format!("{sse_uri}/sse");
         }
 
-        let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
-        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(self.http_client.clone(), config);
+        let config =
+            rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(
+                sse_uri,
+            );
+        let transport = rmcp::transport::StreamableHttpClientTransport::with_client(
+            self.http_client.clone(),
+            config,
+        );
 
         let client_info = rmcp::model::InitializeRequestParams::new(
             rmcp::model::ClientCapabilities::default(),
@@ -225,7 +230,7 @@ impl SseMcpDriver {
         let running = rmcp::serve_client(client_info, transport)
             .await
             .map_err(|e| {
-                TransportError::ConnectionFailed(format!("Discovery handshake failed: {}", e))
+                TransportError::ConnectionFailed(format!("Discovery handshake failed: {e}"))
             })?;
 
         let mcp_client = running.clone();
@@ -241,9 +246,8 @@ impl SseMcpDriver {
         let _ = tx.send(());
         handle.abort();
 
-        let list_result = result.map_err(|e| {
-            TransportError::ProtocolError(format!("Tool listing failed: {}", e))
-        })?;
+        let list_result = result
+            .map_err(|e| TransportError::ProtocolError(format!("Tool listing failed: {e}")))?;
 
         Ok(list_result
             .tools

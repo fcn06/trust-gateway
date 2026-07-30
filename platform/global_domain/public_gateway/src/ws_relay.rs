@@ -4,17 +4,19 @@
 //! and receive real-time pushed messages. Offline messages are
 //! drained from the blind mailbox on connect.
 
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
 use axum::{
-    extract::{State, ws::{WebSocket, WebSocketUpgrade, Message}},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        State,
+    },
     response::IntoResponse,
 };
-use futures::{StreamExt, SinkExt};
-use serde::{Deserialize, Serialize};
-use async_nats::jetstream::Context as JsContext;
 use base64::Engine;
+use futures::{SinkExt, StreamExt};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::blind_mailbox;
 
@@ -73,7 +75,10 @@ pub async fn try_push_to_wallet(
         };
         if let Ok(json) = serde_json::to_string(&push) {
             if session.tx.send(json).is_ok() {
-                tracing::info!("📲 Pushed message to online wallet: {}…", &pairwise_did[..20.min(pairwise_did.len())]);
+                tracing::info!(
+                    "📲 Pushed message to online wallet: {}…",
+                    &pairwise_did[..20.min(pairwise_did.len())]
+                );
                 return true;
             }
         }
@@ -92,38 +97,40 @@ pub async fn wallet_ws_handler(
 /// Handle a single wallet WebSocket connection lifecycle.
 async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppState) {
     let (mut ws_sender, mut ws_receiver) = socket.split();
-    
+
     // 1. Generate and send DID-Auth challenge
     let challenge = uuid::Uuid::new_v4().to_string();
     let auth_challenge = AuthChallenge {
         challenge: challenge.clone(),
-        gateway_did: "did:twin:gateway".to_string(),  // TODO: use actual gateway DID
+        gateway_did: "did:twin:gateway".to_string(), // TODO: use actual gateway DID
         timestamp: chrono::Utc::now().timestamp(),
     };
-    
+
     let challenge_json = serde_json::to_string(&auth_challenge).unwrap();
-    if ws_sender.send(Message::Text(challenge_json.into())).await.is_err() {
+    if ws_sender
+        .send(Message::Text(challenge_json.into()))
+        .await
+        .is_err()
+    {
         tracing::warn!("❌ Failed to send DID-Auth challenge");
         return;
     }
 
     // 2. Wait for DID-Auth response (5 second timeout)
-    let auth_result = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        ws_receiver.next(),
-    ).await;
+    let auth_result =
+        tokio::time::timeout(std::time::Duration::from_secs(5), ws_receiver.next()).await;
 
     let auth_response: AuthResponse = match auth_result {
-        Ok(Some(Ok(Message::Text(text)))) => {
-            match serde_json::from_str(&text) {
-                Ok(resp) => resp,
-                Err(e) => {
-                    tracing::warn!("❌ Invalid DID-Auth response: {}", e);
-                    let _ = ws_sender.send(Message::Text(r#"{"error":"invalid_auth"}"#.into())).await;
-                    return;
-                }
+        Ok(Some(Ok(Message::Text(text)))) => match serde_json::from_str(&text) {
+            Ok(resp) => resp,
+            Err(e) => {
+                tracing::warn!("❌ Invalid DID-Auth response: {}", e);
+                let _ = ws_sender
+                    .send(Message::Text(r#"{"error":"invalid_auth"}"#.into()))
+                    .await;
+                return;
             }
-        }
+        },
         _ => {
             tracing::warn!("❌ DID-Auth timeout or connection closed");
             return;
@@ -133,8 +140,13 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
     // 3. Verify Ed25519 signature
     let verified = verify_did_auth(&challenge, &auth_response);
     if !verified {
-        tracing::warn!("❌ DID-Auth signature verification failed for {}", auth_response.pairwise_did);
-        let _ = ws_sender.send(Message::Text(r#"{"error":"auth_failed"}"#.into())).await;
+        tracing::warn!(
+            "❌ DID-Auth signature verification failed for {}",
+            auth_response.pairwise_did
+        );
+        let _ = ws_sender
+            .send(Message::Text(r#"{"error":"auth_failed"}"#.into()))
+            .await;
         return;
     }
 
@@ -142,9 +154,13 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
     tracing::info!("✅ Wallet authenticated: {}", pairwise_did);
 
     // 4. Send auth success
-    let _ = ws_sender.send(Message::Text(
-        serde_json::json!({"status": "authenticated", "did": &pairwise_did}).to_string().into()
-    )).await;
+    let _ = ws_sender
+        .send(Message::Text(
+            serde_json::json!({"status": "authenticated", "did": &pairwise_did})
+                .to_string()
+                .into(),
+        ))
+        .await;
 
     // 4b. Publish Wallet DID to DHT for discovery
     if let Some(js) = &state.jetstream {
@@ -174,11 +190,15 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
     if let Some(js) = &state.jetstream {
         match blind_mailbox::drain_mailbox(js, &pairwise_did, &state.gateway_seed).await {
             Ok(messages) if !messages.is_empty() => {
-                tracing::info!("📬 Draining {} offline messages for {}", messages.len(), &pairwise_did);
+                tracing::info!(
+                    "📬 Draining {} offline messages for {}",
+                    messages.len(),
+                    &pairwise_did
+                );
                 for msg in messages {
                     let push = WalletPush {
                         msg_type: "mailbox_drain".to_string(),
-                        payload: serde_json::json!({ 
+                        payload: serde_json::json!({
                             "id": msg.id,
                             "envelope": msg.encrypted_payload,
                             "stored_at": msg.stored_at
@@ -200,17 +220,24 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     {
         let mut sessions = state.wallet_sessions.lock().await;
-        sessions.insert(pairwise_did.clone(), WalletSession {
-            pairwise_did: pairwise_did.clone(),
-            tx,
-        });
-        tracing::info!("📡 Registered wallet session: {} (total: {})", pairwise_did, sessions.len());
+        sessions.insert(
+            pairwise_did.clone(),
+            WalletSession {
+                pairwise_did: pairwise_did.clone(),
+                tx,
+            },
+        );
+        tracing::info!(
+            "📡 Registered wallet session: {} (total: {})",
+            pairwise_did,
+            sessions.len()
+        );
     }
 
     // 7. Bidirectional message loop
     let did_for_cleanup = pairwise_did.clone();
     let sessions_for_cleanup = state.wallet_sessions.clone();
-    
+
     loop {
         tokio::select! {
             // Messages from other parts of the system → push to wallet
@@ -248,7 +275,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                         value.get("from").and_then(|v| v.as_str())
                                     ) {
                                         tracing::info!("📩 Wallet wants to send DIDComm message to {}", to_did);
-                                        
+
                                         // 2. Resolve recipient from DHT
                                         if let Some(js) = &state.jetstream {
                                             let to_did_clone = to_did.to_string();
@@ -258,14 +285,14 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                             let js_clone = js.clone();
                                             let gateway_seed_clone = state.gateway_seed.clone();
                                             let http_client_clone = state.http_client.clone();
-                                            
+
                                             tokio::spawn(async move {
                                                 if let Ok(kv) = js_clone.get_key_value("dht_discovery").await {
                                                     let blind_id = crate::generate_blind_pointer(&to_did_clone);
                                                     if let Ok(Some(entry)) = kv.get(&blind_id).await {
                                                         if let Ok(stored) = serde_json::from_slice::<serde_json::Value>(&entry) {
                                                             let doc = stored.get("document").unwrap_or(&stored);
-                                                            
+
                                                             // 3. Extract recipient public key and service endpoint
                                                             let mut recipient_pub_key = None;
                                                             if let Some(vms) = doc.get("verificationMethod").and_then(|v| v.as_array()) {
@@ -282,7 +309,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                     }
                                                                 }
                                                             }
-                                                            
+
                                                             let mut endpoint_uri = None;
                                                             let mut target_id = None;
                                                             if let Some(services) = doc.get("service").and_then(|v| v.as_array()) {
@@ -304,7 +331,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                     }
                                                                 }
                                                             }
-                                                            
+
                                                             // 4. Construct DIDComm inner message
                                                             let msg_id = uuid::Uuid::new_v4().to_string();
                                                             let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
@@ -316,7 +343,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                 "body": body_clone,
                                                                 "created_time": now
                                                             });
-                                                            
+
                                                             // 5. Encrypt (or fallback to plain if no key)
                                                             let payload_to_send = if let Some(_pubkey) = recipient_pub_key {
                                                                 // In the hybrid architecture, E2E encryption happens at the edges (Host/Wallet) via OpenMLS.
@@ -327,7 +354,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                 tracing::warn!("⚠️ No public key found for recipient, sending unencrypted (should not happen in prod)");
                                                                 serde_json::to_string(&inner_msg).unwrap()
                                                             };
-                                                            
+
                                                             // 6. Route the message
                                                             if let Some(tid) = target_id {
                                                                 // Decrypt internal opaque token
@@ -336,10 +363,10 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                         use hkdf::Hkdf;
                                                                         use sha2::Sha256;
                                                                         use chacha20poly1305::{XChaCha20Poly1305, XNonce, aead::{Aead, KeyInit}};
-                                                                        
+
                                                                         let nonce = XNonce::from_slice(&blob_bytes[..24]);
                                                                         let ciphertext = &blob_bytes[24..];
-                                                                        
+
                                                                         let hk_wrap = Hkdf::<Sha256>::new(None, &gateway_seed_clone);
                                                                         let mut key_bytes = [0u8; 32];
                                                                         if hk_wrap.expand(b"sovereign:gateway:internal-wrap", &mut key_bytes).is_ok() {
@@ -347,7 +374,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                             let cipher_wrap = XChaCha20Poly1305::new(key);
                                                                             if let Ok(dec_bytes) = cipher_wrap.decrypt(nonce, ciphertext) {
                                                                                 if let Ok(subject_str) = String::from_utf8(dec_bytes) {
-                                                                                    let nats_subject = format!("v1.{}", subject_str);
+                                                                                    let nats_subject = format!("v1.{subject_str}");
                                                                                     tracing::info!("📤 Relaying Wallet message to JIT NATS subject: {}", nats_subject);
                                                                                     let _ = js_clone.publish(nats_subject, payload_to_send.into()).await;
                                                                                     return;
@@ -357,7 +384,7 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                     }
                                                                 }
                                                             }
-                                                            
+
                                                             if let Some(uri) = endpoint_uri {
                                                                 if uri != "http://localhost:3002/ingress" && !uri.contains("gateway.push.wallet") {
                                                                     tracing::info!("🌐 Sending Wallet message to external HTTP endpoint: {}", uri);
@@ -368,15 +395,15 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
                                                                     return;
                                                                 }
                                                             }
-                                                            
+
                                                             // Fallback naive routing if all else fails
                                                             use sha2::{Digest, Sha256};
                                                             let mut hasher = Sha256::new();
                                                             hasher.update((to_did_clone.clone() + "sovereign_local_subject").as_bytes());
                                                             // Fallback naive routing
                                                             let hashed_subject = hex::encode(hasher.finalize());
-                                                            let nats_subject = format!("v1.{}", hashed_subject);
-                                                            
+                                                            let nats_subject = format!("v1.{hashed_subject}");
+
                                                             tracing::info!("📤 Relaying Wallet message to NATS via fallback: {}", nats_subject);
                                                             let _ = js_clone.publish(nats_subject, payload_to_send.into()).await;
                                                         }
@@ -410,14 +437,18 @@ async fn handle_wallet_connection(socket: WebSocket, state: crate::GatewayAppSta
     {
         let mut sessions = sessions_for_cleanup.lock().await;
         sessions.remove(&did_for_cleanup);
-        tracing::info!("🔌 Wallet disconnected: {} (remaining: {})", did_for_cleanup, sessions.len());
+        tracing::info!(
+            "🔌 Wallet disconnected: {} (remaining: {})",
+            did_for_cleanup,
+            sessions.len()
+        );
     }
 }
 
 /// Verify a DID-Auth Ed25519 signature.
 fn verify_did_auth(challenge: &str, response: &AuthResponse) -> bool {
-    use ed25519_dalek::{Signature, VerifyingKey, Verifier};
-    
+    use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+
     let pub_bytes = match hex::decode(&response.public_key) {
         Ok(b) if b.len() == 32 => b,
         _ => return false,
@@ -439,7 +470,9 @@ fn verify_did_auth(challenge: &str, response: &AuthResponse) -> bool {
     let signature = Signature::from_bytes(&sig_arr);
 
     // Verify: signature of the challenge string
-    verifying_key.verify(challenge.as_bytes(), &signature).is_ok()
+    verifying_key
+        .verify(challenge.as_bytes(), &signature)
+        .is_ok()
 }
 
 /// Publish a Wallet's pairwise DID and its service endpoint to the DHT.
@@ -450,7 +483,7 @@ async fn publish_wallet_did(
     pk_hex: &str,
 ) -> anyhow::Result<()> {
     let kv = js.get_key_value("dht_discovery").await?;
-    
+
     // Convert hex public key to Base64 for the DID document
     let pk_bytes = hex::decode(pk_hex)?;
     let pk_b64 = base64::engine::general_purpose::STANDARD.encode(pk_bytes);
@@ -477,7 +510,10 @@ async fn publish_wallet_did(
     });
 
     kv.put(blind_id, serde_json::to_vec(&entry)?.into()).await?;
-    tracing::info!("📢 Published Wallet DID Document to DHT for discovery: {}", did);
+    tracing::info!(
+        "📢 Published Wallet DID Document to DHT for discovery: {}",
+        did
+    );
     Ok(())
 }
 
@@ -487,12 +523,12 @@ mod tests {
 
     #[test]
     fn test_verify_did_auth_valid_signature() {
-        use ed25519_dalek::{SigningKey, Signer};
-        
+        use ed25519_dalek::{Signer, SigningKey};
+
         let signing_key = SigningKey::from_bytes(&[42u8; 32]);
         let challenge = "test-challenge-123";
         let signature = signing_key.sign(challenge.as_bytes());
-        
+
         let response = AuthResponse {
             pairwise_did: "did:twin:zTest".to_string(),
             signature: hex::encode(signature.to_bytes()),
@@ -504,11 +540,11 @@ mod tests {
 
     #[test]
     fn test_verify_did_auth_wrong_challenge() {
-        use ed25519_dalek::{SigningKey, Signer};
-        
+        use ed25519_dalek::{Signer, SigningKey};
+
         let signing_key = SigningKey::from_bytes(&[42u8; 32]);
         let signature = signing_key.sign(b"different-challenge");
-        
+
         let response = AuthResponse {
             pairwise_did: "did:twin:zTest".to_string(),
             signature: hex::encode(signature.to_bytes()),
@@ -539,18 +575,21 @@ mod tests {
     async fn test_try_push_to_wallet_active_session() {
         let sessions = new_sessions();
         let (tx, mut rx) = mpsc::unbounded_channel();
-        
+
         {
             let mut s = sessions.lock().await;
-            s.insert("did:twin:zTest".to_string(), WalletSession {
-                pairwise_did: "did:twin:zTest".to_string(),
-                tx,
-            });
+            s.insert(
+                "did:twin:zTest".to_string(),
+                WalletSession {
+                    pairwise_did: "did:twin:zTest".to_string(),
+                    tx,
+                },
+            );
         }
 
         let result = try_push_to_wallet(&sessions, "did:twin:zTest", "encrypted_data").await;
         assert!(result);
-        
+
         // Verify message was received
         let msg = rx.recv().await.unwrap();
         assert!(msg.contains("encrypted_data"));

@@ -112,11 +112,15 @@ async fn main() -> anyhow::Result<()> {
         }
     } else if let Some(secret) = identity_context::load_secret("GRANT_SIGNING_SECRET") {
         tracing::info!("✅ Grant validation: HMAC-HS256 (GRANT_SIGNING_SECRET)");
-        Some(tools::GrantValidator::from_hmac_secret(secret.expose_secret()))
+        Some(tools::GrantValidator::from_hmac_secret(
+            secret.expose_secret(),
+        ))
     } else if let Some(secret) = identity_context::load_secret("JWT_SECRET") {
         // Legacy fallback: shared JWT_SECRET used by trust_gateway for HMAC signing
         tracing::info!("✅ Grant validation: HMAC-HS256 (JWT_SECRET legacy fallback)");
-        Some(tools::GrantValidator::from_hmac_secret(secret.expose_secret()))
+        Some(tools::GrantValidator::from_hmac_secret(
+            secret.expose_secret(),
+        ))
     } else {
         tracing::warn!("⚠️ No grant signing key configured — ExecutionGrant validation disabled");
         None
@@ -133,21 +137,26 @@ async fn main() -> anyhow::Result<()> {
     let config_path = std::env::var("OAUTH_PROVIDERS_CONFIG_PATH")
         .unwrap_or_else(|_| "connector_mcp_server/config/oauth_providers.toml".to_string());
 
-    let providers = match trust_core::oauth_provider_config::OAuthProvidersFile::load_from_file(&config_path) {
-        Ok(file) => {
-            let map = file.to_map();
-            tracing::info!("🔑 Loaded {} OAuth providers from {}", map.len(), config_path);
-            map
-        }
-        Err(e) => {
-            tracing::warn!(
+    let providers =
+        match trust_core::oauth_provider_config::OAuthProvidersFile::load_from_file(&config_path) {
+            Ok(file) => {
+                let map = file.to_map();
+                tracing::info!(
+                    "🔑 Loaded {} OAuth providers from {}",
+                    map.len(),
+                    config_path
+                );
+                map
+            }
+            Err(e) => {
+                tracing::warn!(
                 "⚠️ Failed to load OAuth providers from {}: {}. Standard integrations might fail.",
                 config_path,
                 e
             );
-            std::collections::HashMap::new()
-        }
-    };
+                std::collections::HashMap::new()
+            }
+        };
 
     let state = Arc::new(AppState {
         js,

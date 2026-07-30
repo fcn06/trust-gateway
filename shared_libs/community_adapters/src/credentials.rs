@@ -30,7 +30,7 @@ impl CredentialProvider for EnvCredentialProvider {
             Ok(val) if !val.is_empty() => Ok(Some(val)),
             Ok(_) => Ok(None), // Empty string treated as absent
             Err(std::env::VarError::NotPresent) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("Failed to read env var '{}': {}", key, e)),
+            Err(e) => Err(anyhow::anyhow!("Failed to read env var '{key}': {e}")),
         }
     }
 }

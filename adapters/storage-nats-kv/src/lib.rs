@@ -9,7 +9,7 @@ impl NatsKvStorage {
 
     /// Check and consume a grant nonce atomically using _ separator (RULE 020).
     pub async fn consume_nonce(&self, nonce: &str) -> Result<bool, anyhow::Error> {
-        let key = format!("nonce_{}", nonce);
+        let key = format!("nonce_{nonce}");
         match self.store.get(&key).await {
             Ok(Some(_)) => Ok(false), // Already consumed!
             _ => {

@@ -1,9 +1,9 @@
+use crate::nats_token_broker::NatsTokenBroker;
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::json;
-use trust_core::executor::{Executor, VerifiedGrant};
 use trust_core::errors::TrustError;
-use crate::nats_token_broker::NatsTokenBroker;
+use trust_core::executor::{Executor, VerifiedGrant};
 use trust_core::oauth_token::TokenBroker;
 
 pub struct ConnectorExecutor {
@@ -15,15 +15,21 @@ pub struct ConnectorExecutor {
 impl ConnectorExecutor {
     pub async fn new(nats: async_nats::Client) -> Result<Self> {
         let js = async_nats::jetstream::new(nats.clone());
-        let kv = match js.create_key_value(async_nats::jetstream::kv::Config {
-            bucket: "oauth_tokens".to_string(),
-            description: "Tenant OAuth tokens".to_string(),
-            history: 3,
-            ..Default::default()
-        }).await {
+        let kv = match js
+            .create_key_value(async_nats::jetstream::kv::Config {
+                bucket: "oauth_tokens".to_string(),
+                description: "Tenant OAuth tokens".to_string(),
+                history: 3,
+                ..Default::default()
+            })
+            .await
+        {
             Ok(store) => store,
             Err(e) => {
-                tracing::warn!("⚠️ oauth_tokens KV bucket creation failed, trying to bind to existing: {}", e);
+                tracing::warn!(
+                    "⚠️ oauth_tokens KV bucket creation failed, trying to bind to existing: {}",
+                    e
+                );
                 js.get_key_value("oauth_tokens").await?
             }
         };
@@ -52,7 +58,10 @@ impl Executor for ConnectorExecutor {
     fn handles(&self, tool_id: &str) -> bool {
         trust_core::tool_registry::builtin_descriptors()
             .iter()
-            .any(|d| d.mcp_name == tool_id && d.executor_profile == trust_core::tool_registry::ExecutorProfile::Connector)
+            .any(|d| {
+                d.mcp_name == tool_id
+                    && d.executor_profile == trust_core::tool_registry::ExecutorProfile::Connector
+            })
     }
 
     async fn execute(
@@ -62,10 +71,12 @@ impl Executor for ConnectorExecutor {
     ) -> Result<serde_json::Value, TrustError> {
         match grant.allowed_action() {
             "google_calendar_list_events" => {
-                self.execute_google_calendar_list(grant.tenant_id(), args).await
+                self.execute_google_calendar_list(grant.tenant_id(), args)
+                    .await
             }
             "google_calendar_create_event" => {
-                self.execute_google_calendar_create(grant.tenant_id(), args).await
+                self.execute_google_calendar_create(grant.tenant_id(), args)
+                    .await
             }
             "stripe_list_payments" => {
                 Ok(json!({ "error": "Stripe integration not yet connected" }))
@@ -87,13 +98,20 @@ impl ConnectorExecutor {
         tenant_id: &str,
         args: serde_json::Value,
     ) -> Result<serde_json::Value, TrustError> {
-        let token = self.token_broker.get_valid_token(tenant_id, "google").await
+        let token = self
+            .token_broker
+            .get_valid_token(tenant_id, "google")
+            .await
             .map_err(|e| TrustError::Internal(e.to_string()))?;
 
         let max_results = args["max_results"].as_u64().unwrap_or(10);
-        let time_min = args["time_min"].as_str().unwrap_or(&chrono::Utc::now().to_rfc3339()).to_string();
+        let time_min = args["time_min"]
+            .as_str()
+            .unwrap_or(&chrono::Utc::now().to_rfc3339())
+            .to_string();
 
-        let resp = self.http_client
+        let resp = self
+            .http_client
             .get("https://www.googleapis.com/calendar/v3/calendars/primary/events")
             .bearer_auth(&token.access_token)
             .query(&[
@@ -104,10 +122,12 @@ impl ConnectorExecutor {
             ])
             .send()
             .await
-            .map_err(|e| TrustError::Internal(format!("Google API error: {}", e)))?;
+            .map_err(|e| TrustError::Internal(format!("Google API error: {e}")))?;
 
-        let data: serde_json::Value = resp.json().await
-            .map_err(|e| TrustError::Internal(format!("Failed to parse response: {}", e)))?;
+        let data: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| TrustError::Internal(format!("Failed to parse response: {e}")))?;
 
         Ok(data)
     }
@@ -117,16 +137,23 @@ impl ConnectorExecutor {
         tenant_id: &str,
         args: serde_json::Value,
     ) -> Result<serde_json::Value, TrustError> {
-        let token = self.token_broker.get_valid_token(tenant_id, "google").await
+        let token = self
+            .token_broker
+            .get_valid_token(tenant_id, "google")
+            .await
             .map_err(|e| TrustError::Internal(e.to_string()))?;
 
-        let start_dt = args["start_time"].as_str()
+        let start_dt = args["start_time"]
+            .as_str()
             .or_else(|| args["start_datetime"].as_str())
             .or_else(|| args["start"].as_str())
             .or_else(|| args["start"]["dateTime"].as_str())
-            .ok_or_else(|| TrustError::Internal("Missing start_time/start_datetime/start".to_string()))?;
+            .ok_or_else(|| {
+                TrustError::Internal("Missing start_time/start_datetime/start".to_string())
+            })?;
 
-        let end_dt = args["end_time"].as_str()
+        let end_dt = args["end_time"]
+            .as_str()
             .or_else(|| args["end_datetime"].as_str())
             .or_else(|| args["end"].as_str())
             .or_else(|| args["end"]["dateTime"].as_str())
@@ -139,18 +166,20 @@ impl ConnectorExecutor {
             "end": { "dateTime": end_dt },
         });
 
-        let resp = self.http_client
+        let resp = self
+            .http_client
             .post("https://www.googleapis.com/calendar/v3/calendars/primary/events")
             .bearer_auth(&token.access_token)
             .json(&event_body)
             .send()
             .await
-            .map_err(|e| TrustError::Internal(format!("Google API error: {}", e)))?;
+            .map_err(|e| TrustError::Internal(format!("Google API error: {e}")))?;
 
-        let data: serde_json::Value = resp.json().await
-            .map_err(|e| TrustError::Internal(format!("Failed to parse response: {}", e)))?;
+        let data: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| TrustError::Internal(format!("Failed to parse response: {e}")))?;
 
         Ok(data)
     }
 }
-

@@ -6,14 +6,14 @@
 // the tools dynamically into the ToolRegistry.
 // ─────────────────────────────────────────────────────────────
 
-use std::sync::Arc;
-use serde_json::json;
+use crate::router::{ToolRegistry, ToolRegistryEntry};
+use crate::transport::{NatsMcpDriver, SseMcpDriver, StdioMcpDriver, TransportRegistry};
 use async_nats::jetstream::kv::Store;
 use futures::StreamExt;
+use serde_json::json;
+use std::sync::Arc;
 use trust_core::app_manifest::{AppManifest, AppType};
-use trust_core::transport::{TransportToolDefinition, McpTransport, TransportType};
-use crate::router::{ToolRegistry, ToolRegistryEntry};
-use crate::transport::{TransportRegistry, NatsMcpDriver, SseMcpDriver, StdioMcpDriver};
+use trust_core::transport::{McpTransport, TransportType};
 
 /// Registry to supervise dynamic application onboarding.
 pub struct AppRegistry {
@@ -60,23 +60,31 @@ impl AppRegistry {
         // Create driver by transport type and initialize before wrapping in Arc
         let driver: Arc<dyn McpTransport> = match manifest.routing.transport_type {
             TransportType::Nats => {
-                let profile = manifest.routing.nats_profile.clone().unwrap_or_else(|| "connector".to_string());
-                let mut d = NatsMcpDriver::new(self.nats.clone(), profile, self.policy_fingerprint.clone());
+                let profile = manifest
+                    .routing
+                    .nats_profile
+                    .clone()
+                    .unwrap_or_else(|| "connector".to_string());
+                let mut d =
+                    NatsMcpDriver::new(self.nats.clone(), profile, self.policy_fingerprint.clone());
                 d.initialize().await?;
                 Arc::new(d)
             }
             TransportType::Sse => {
-                let sse_url = manifest.routing.sse_url.clone().ok_or_else(|| {
-                    anyhow::anyhow!("Missing sse_url for SSE transport")
-                })?;
+                let sse_url = manifest
+                    .routing
+                    .sse_url
+                    .clone()
+                    .ok_or_else(|| anyhow::anyhow!("Missing sse_url for SSE transport"))?;
                 let mut d = SseMcpDriver::new(sse_url, self.http_client.clone());
                 d.initialize().await?;
                 Arc::new(d)
             }
             TransportType::Stdio => {
-                let command = manifest.routing.stdio_command.clone().ok_or_else(|| {
-                    anyhow::anyhow!("Missing stdio_command for Stdio transport")
-                })?;
+                let command =
+                    manifest.routing.stdio_command.clone().ok_or_else(|| {
+                        anyhow::anyhow!("Missing stdio_command for Stdio transport")
+                    })?;
                 let args = manifest.routing.stdio_args.clone();
                 let mut d = StdioMcpDriver::new(command, args);
                 d.initialize().await?;
@@ -101,7 +109,9 @@ impl AppRegistry {
             tool_entries.push((tool.name.clone(), entry));
         }
 
-        self.tool_registry.register_dynamic_tools(tool_entries).await;
+        self.tool_registry
+            .register_dynamic_tools(tool_entries)
+            .await;
 
         // Persist to JetStream KV
         if let Some(ref kv) = self.kv {
@@ -189,7 +199,11 @@ impl AppRegistry {
                     if let Ok(Some(entry)) = kv.get(&key).await {
                         if let Ok(manifest) = serde_json::from_slice::<AppManifest>(&entry) {
                             if let Err(e) = self.register_app(manifest).await {
-                                tracing::warn!("⚠️ Failed to restore app from key '{}': {}", key, e);
+                                tracing::warn!(
+                                    "⚠️ Failed to restore app from key '{}': {}",
+                                    key,
+                                    e
+                                );
                             } else {
                                 restore_count += 1;
                             }
@@ -210,14 +224,20 @@ impl AppRegistry {
 
     /// Run the main NATS subscriber loop for app registration and unregistration.
     pub async fn listen_for_registrations(&self) -> anyhow::Result<()> {
-        let register_sub = self.nats.subscribe("infra.v1.app.register".to_string()).await?;
-        let unregister_sub = self.nats.subscribe("infra.v1.app.unregister".to_string()).await?;
+        let register_sub = self
+            .nats
+            .subscribe("infra.v1.app.register".to_string())
+            .await?;
+        let unregister_sub = self
+            .nats
+            .subscribe("infra.v1.app.unregister".to_string())
+            .await?;
 
         tracing::info!("📬 AppRegistry listening for registration events on NATS...");
 
         let mut stream = futures::stream::select(
             register_sub.map(|msg| (true, msg)),
-            unregister_sub.map(|msg| (false, msg))
+            unregister_sub.map(|msg| (false, msg)),
         );
 
         while let Some((is_register, msg)) = stream.next().await {
@@ -233,7 +253,13 @@ impl AppRegistry {
                                     "timestamp": chrono::Utc::now().timestamp(),
                                 });
                                 if let Ok(payload) = serde_json::to_vec(&confirmation) {
-                                    let _ = self.nats.publish("infra.v1.app.registered".to_string(), payload.into()).await;
+                                    let _ = self
+                                        .nats
+                                        .publish(
+                                            "infra.v1.app.registered".to_string(),
+                                            payload.into(),
+                                        )
+                                        .await;
                                 }
                             }
                             Err(e) => {
@@ -257,11 +283,21 @@ impl AppRegistry {
                                         "timestamp": chrono::Utc::now().timestamp(),
                                     });
                                     if let Ok(payload) = serde_json::to_vec(&confirmation) {
-                                        let _ = self.nats.publish("infra.v1.app.registered".to_string(), payload.into()).await;
+                                        let _ = self
+                                            .nats
+                                            .publish(
+                                                "infra.v1.app.registered".to_string(),
+                                                payload.into(),
+                                            )
+                                            .await;
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::error!("❌ Failed to unregister app '{}': {}", app_id, e);
+                                    tracing::error!(
+                                        "❌ Failed to unregister app '{}': {}",
+                                        app_id,
+                                        e
+                                    );
                                 }
                             }
                         }

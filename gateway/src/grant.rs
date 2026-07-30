@@ -451,7 +451,11 @@ mod tests {
             !signed.claims.input_hash.is_empty(),
             "Grant must contain non-empty input_hash"
         );
-        assert_eq!(signed.claims.input_hash.len(), 64, "SHA-256 hex hash must be 64 characters");
+        assert_eq!(
+            signed.claims.input_hash.len(),
+            64,
+            "SHA-256 hex hash must be 64 characters"
+        );
     }
 
     #[test]

@@ -53,7 +53,7 @@ impl TokenStore {
                 Ok(Some(token))
             }
             Ok(None) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("Token store error: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("Token store error: {e}")),
         }
     }
 

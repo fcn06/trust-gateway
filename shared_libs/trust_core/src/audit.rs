@@ -113,7 +113,7 @@ impl std::fmt::Display for AuditEventType {
             Self::GrantReplayBlocked => "grant.replay_blocked",
             Self::PolicyLoaded => "policy.loaded",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

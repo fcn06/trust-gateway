@@ -24,7 +24,10 @@ fn test_negative_invariant_invalid_action_rejected() {
     let args = serde_json::json!({"summary": "meeting"});
     // Attempting to execute unauthorized tool 'stripe.refund' with calendar grant must be REJECTED!
     let result = verify_input_binding(&grant, "stripe.refund", &args);
-    assert!(result.is_err(), "Grant re-targeting to unauthorized tool must fail!");
+    assert!(
+        result.is_err(),
+        "Grant re-targeting to unauthorized tool must fail!"
+    );
     if let Err(VerifierError::ActionMismatch { allowed, requested }) = result {
         assert_eq!(allowed, "google.calendar.event.create");
         assert_eq!(requested, "stripe.refund");

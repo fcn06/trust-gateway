@@ -35,13 +35,16 @@ impl<T> TrustEnvelope<T> {
         }
     }
     pub fn with_auth_context(mut self, subject: impl Into<String>) -> Self {
-        self.auth_context = Some(subject.into()); self
+        self.auth_context = Some(subject.into());
+        self
     }
     pub fn with_policy_fingerprint(mut self, fp: impl Into<String>) -> Self {
-        self.policy_fingerprint = Some(fp.into()); self
+        self.policy_fingerprint = Some(fp.into());
+        self
     }
     pub fn with_trace_id(mut self, id: impl Into<String>) -> Self {
-        self.trace_id = id.into(); self
+        self.trace_id = id.into();
+        self
     }
 }
 
@@ -83,12 +86,18 @@ mod tests {
 
     #[test]
     fn envelope_round_trip() {
-        let env = TrustEnvelope::new("t", "a", ProposedAction {
-            tool_name: "test".into(),
-            canonical_args: serde_json::json!({}),
-            input_hash: "h".into(),
-            source: "s".into(),
-        }).with_auth_context("did:twin:u").with_policy_fingerprint("fp");
+        let env = TrustEnvelope::new(
+            "t",
+            "a",
+            ProposedAction {
+                tool_name: "test".into(),
+                canonical_args: serde_json::json!({}),
+                input_hash: "h".into(),
+                source: "s".into(),
+            },
+        )
+        .with_auth_context("did:twin:u")
+        .with_policy_fingerprint("fp");
         let json = serde_json::to_string(&env).unwrap();
         let r: TrustEnvelope<ProposedAction> = serde_json::from_str(&json).unwrap();
         assert_eq!(r.schema_version, 1);
@@ -97,16 +106,30 @@ mod tests {
 
     #[test]
     fn trace_propagation() {
-        let orig = TrustEnvelope::new("t", "a", ProposedAction {
-            tool_name: "t".into(), canonical_args: serde_json::json!({}),
-            input_hash: "h".into(), source: "s".into(),
-        });
+        let orig = TrustEnvelope::new(
+            "t",
+            "a",
+            ProposedAction {
+                tool_name: "t".into(),
+                canonical_args: serde_json::json!({}),
+                input_hash: "h".into(),
+                source: "s".into(),
+            },
+        );
         let tid = orig.trace_id.clone();
-        let down = TrustEnvelope::new("t", "a", GrantedAction {
-            grant_jwt: "j".into(), tool_id: "t".into(), tool_version: "v1".into(),
-            canonical_args: serde_json::json!({}), input_hash: "h".into(),
-            reply_subject: "r".into(),
-        }).with_trace_id(&tid);
+        let down = TrustEnvelope::new(
+            "t",
+            "a",
+            GrantedAction {
+                grant_jwt: "j".into(),
+                tool_id: "t".into(),
+                tool_version: "v1".into(),
+                canonical_args: serde_json::json!({}),
+                input_hash: "h".into(),
+                reply_subject: "r".into(),
+            },
+        )
+        .with_trace_id(&tid);
         assert_eq!(down.trace_id, tid);
     }
 }

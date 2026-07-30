@@ -3,10 +3,9 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use tokio::process::Command;
-use trust_core::executor::{Executor, VerifiedGrant};
 use trust_core::errors::TrustError;
+use trust_core::executor::{Executor, VerifiedGrant};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NativeToolManifest {
@@ -34,15 +33,19 @@ pub struct NativeToolExecutor {
 impl NativeToolExecutor {
     pub fn new(tools_dir: &str, nats: async_nats::Client) -> Result<Self> {
         let mut tools = HashMap::new();
-        let paths: Vec<&str> = tools_dir.split(|c| c == ':' || c == ',').collect();
+        let paths: Vec<&str> = tools_dir.split([':', ',']).collect();
         for dir_str in paths {
             let path = Path::new(dir_str.trim());
             if path.exists() && path.is_dir() {
                 Self::scan_directory(path, &mut tools)?;
             }
         }
-        
-        tracing::info!("✅ Loaded {} native tools/skills from {}", tools.len(), tools_dir);
+
+        tracing::info!(
+            "✅ Loaded {} native tools/skills from {}",
+            tools.len(),
+            tools_dir
+        );
         Ok(Self { tools, nats })
     }
 
@@ -62,8 +65,9 @@ impl NativeToolExecutor {
                                 .file_name()
                                 .and_then(|s| s.to_str())
                                 .unwrap_or(&manifest.interpreter);
-                            
-                            let allowed = ["bash", "sh", "python3", "python", "node", "deno", "ruby"];
+
+                            let allowed =
+                                ["bash", "sh", "python3", "python", "node", "deno", "ruby"];
                             if !allowed.contains(&interpreter_name) {
                                 tracing::warn!(
                                     "⚠️ Skipping native tool '{}': interpreter '{}' is not in the allow-list",
@@ -77,11 +81,14 @@ impl NativeToolExecutor {
                             if let Ok(canonical_script) = script_path.canonicalize() {
                                 if let Ok(canonical_dir) = dir.canonicalize() {
                                     if canonical_script.starts_with(&canonical_dir) {
-                                        tools.insert(manifest.name.clone(), LoadedNativeTool {
-                                            manifest,
-                                            dir: dir.clone(),
-                                            script_path: canonical_script,
-                                        });
+                                        tools.insert(
+                                            manifest.name.clone(),
+                                            LoadedNativeTool {
+                                                manifest,
+                                                dir: dir.clone(),
+                                                script_path: canonical_script,
+                                            },
+                                        );
                                     }
                                 }
                             }
@@ -112,11 +119,14 @@ impl Executor for NativeToolExecutor {
         args: serde_json::Value,
     ) -> Result<serde_json::Value, TrustError> {
         let tool_name = grant.allowed_action();
-        let tool = self.tools.get(tool_name)
-            .ok_or_else(|| TrustError::Internal(format!("Native tool not found: {}", tool_name)))?;
+        let tool = self
+            .tools
+            .get(tool_name)
+            .ok_or_else(|| TrustError::Internal(format!("Native tool not found: {tool_name}")))?;
 
         let manifest = &tool.manifest;
-        let timeout = manifest.timeout_seconds
+        let timeout = manifest
+            .timeout_seconds
             .map(std::time::Duration::from_secs)
             .unwrap_or(std::time::Duration::from_secs(30));
 
@@ -126,17 +136,26 @@ impl Executor for NativeToolExecutor {
         cmd.env_clear();
 
         // Inject environment
-        cmd.env("PATH", std::env::var("PATH").unwrap_or_else(|_| "/usr/local/bin:/usr/bin:/bin".to_string()));
+        cmd.env(
+            "PATH",
+            std::env::var("PATH").unwrap_or_else(|_| "/usr/local/bin:/usr/bin:/bin".to_string()),
+        );
         cmd.env("HOME", &tool.dir);
         cmd.env("LANG", "C.UTF-8");
-        
+
         // Nomenclature transition support: inject both TOOL_ and SKILL_ variables
-        cmd.env("TOOL_ARGS", serde_json::to_string(&args).unwrap_or_default());
+        cmd.env(
+            "TOOL_ARGS",
+            serde_json::to_string(&args).unwrap_or_default(),
+        );
         cmd.env("TOOL_NAME", &manifest.name);
         cmd.env("TOOL_ACTION_ID", grant.action_id());
         cmd.env("TOOL_TENANT_ID", grant.tenant_id());
 
-        cmd.env("SKILL_ARGS", serde_json::to_string(&args).unwrap_or_default());
+        cmd.env(
+            "SKILL_ARGS",
+            serde_json::to_string(&args).unwrap_or_default(),
+        );
         cmd.env("SKILL_NAME", &manifest.name);
         cmd.env("SKILL_ACTION_ID", grant.action_id());
         cmd.env("SKILL_TENANT_ID", grant.tenant_id());
@@ -166,30 +185,38 @@ impl Executor for NativeToolExecutor {
             });
         }
 
-        let mut child = cmd.spawn().map_err(|e| TrustError::Internal(format!("Failed to spawn native tool: {}", e)))?;
+        let child = cmd
+            .spawn()
+            .map_err(|e| TrustError::Internal(format!("Failed to spawn native tool: {e}")))?;
         let pid = child.id().map(|id| nix::unistd::Pid::from_raw(id as i32));
-        
+
         match tokio::time::timeout(timeout, child.wait_with_output()).await {
             Ok(Ok(output)) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
 
                 if !output.status.success() {
-                    return Err(TrustError::Internal(format!("Native tool failed (exit {}): {}", output.status, stderr)));
+                    return Err(TrustError::Internal(format!(
+                        "Native tool failed (exit {}): {}",
+                        output.status, stderr
+                    )));
                 }
 
                 let json_start = stdout.find('{').unwrap_or(0);
                 let json_part = &stdout[json_start..];
                 let output_value = serde_json::from_str::<serde_json::Value>(json_part)
-                    .unwrap_or_else(|_| serde_json::Value::String(stdout));
+                    .unwrap_or(serde_json::Value::String(stdout));
 
                 Ok(output_value)
             }
-            Ok(Err(e)) => Err(TrustError::Internal(format!("Execution error: {}", e))),
+            Ok(Err(e)) => Err(TrustError::Internal(format!("Execution error: {e}"))),
             Err(_) => {
                 if let Some(p) = pid {
                     // Send SIGKILL to the process group (since we called setsid)
-                    let _ = nix::sys::signal::kill(nix::unistd::Pid::from_raw(-p.as_raw()), nix::sys::signal::Signal::SIGKILL);
+                    let _ = nix::sys::signal::kill(
+                        nix::unistd::Pid::from_raw(-p.as_raw()),
+                        nix::sys::signal::Signal::SIGKILL,
+                    );
                 }
                 Err(TrustError::Internal("Execution timed out".to_string()))
             }

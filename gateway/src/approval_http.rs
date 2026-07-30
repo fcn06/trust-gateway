@@ -225,8 +225,7 @@ pub async fn list_escalations_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
 
     let tenant_id = if verified.tenant_id.is_empty() {
         "default"
@@ -285,8 +284,7 @@ pub async fn approve_escalation_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
 
     let decision = DecisionRequest {
         decision: "approved".to_string(),
@@ -307,8 +305,7 @@ pub async fn deny_escalation_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
 
     let decision = DecisionRequest {
         decision: "denied".to_string(),

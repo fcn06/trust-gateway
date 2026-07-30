@@ -30,7 +30,7 @@ pub fn create_did_twin() -> DidIdentity {
     let signing_key = SigningKey::from_bytes(&seed_bytes);
     let public_key = signing_key.verifying_key();
     let pub_hex = hex::encode(public_key.to_bytes());
-    let did = format!("did:twin:z{}", pub_hex);
+    let did = format!("did:twin:z{pub_hex}");
 
     DidIdentity {
         did,
@@ -51,7 +51,7 @@ pub fn derive_did_from_seed(master_seed: &[u8], context: &[u8]) -> DidIdentity {
     let signing_key = SigningKey::from_bytes(&derived);
     let public_key = signing_key.verifying_key();
     let pub_hex = hex::encode(public_key.to_bytes());
-    let did = format!("did:twin:z{}", pub_hex);
+    let did = format!("did:twin:z{pub_hex}");
 
     DidIdentity {
         did,
@@ -75,7 +75,7 @@ pub fn derive_did_from_seed(master_seed: &[u8], context: &[u8]) -> DidIdentity {
 pub fn derive_pairwise_did(master_seed: &[u8], connection_id: &str) -> DidIdentity {
     // Two-stage derivation: master_seed → intermediate → pairwise
     // Stage 1: Derive a pairwise-specific intermediate key
-    let context = format!("sovereign:pairwise:{}", connection_id);
+    let context = format!("sovereign:pairwise:{connection_id}");
     let hk = Hkdf::<Sha256>::new(None, master_seed);
     let mut pairwise_seed = [0u8; 32];
     hk.expand(context.as_bytes(), &mut pairwise_seed)
@@ -85,7 +85,7 @@ pub fn derive_pairwise_did(master_seed: &[u8], connection_id: &str) -> DidIdenti
     let signing_key = SigningKey::from_bytes(&pairwise_seed);
     let public_key = signing_key.verifying_key();
     let pub_hex = hex::encode(public_key.to_bytes());
-    let did = format!("did:twin:z{}", pub_hex);
+    let did = format!("did:twin:z{pub_hex}");
 
     DidIdentity {
         did,
@@ -111,7 +111,7 @@ pub fn create_service_did(tenant_id: &str) -> DidIdentity {
     let signing_key = SigningKey::from_bytes(&service_seed);
     let public_key = signing_key.verifying_key();
     let pub_hex = hex::encode(public_key.to_bytes());
-    let did = format!("did:twin:z{}", pub_hex);
+    let did = format!("did:twin:z{pub_hex}");
 
     DidIdentity {
         did,

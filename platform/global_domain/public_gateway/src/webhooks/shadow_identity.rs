@@ -4,9 +4,9 @@
 //! phone numbers or email addresses. Uses HMAC to ensure the same external
 //! identity always maps to the same DID within a tenant.
 
+use base64::Engine;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
-use base64::Engine;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -24,16 +24,15 @@ pub fn generate_shadow_did(
     channel: &str,
 ) -> String {
     let normalized = normalize_identifier(identifier, channel);
-    let input = format!("{}:{}", tenant_id, normalized);
+    let input = format!("{tenant_id}:{normalized}");
 
-    let mut mac = HmacSha256::new_from_slice(gateway_seed)
-        .expect("HMAC can take any key size");
+    let mut mac = HmacSha256::new_from_slice(gateway_seed).expect("HMAC can take any key size");
     mac.update(input.as_bytes());
     let result = mac.finalize();
     let hash_bytes = &result.into_bytes()[..16]; // Use first 16 bytes
 
     let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(hash_bytes);
-    format!("did:shadow:{}:{}", channel, encoded)
+    format!("did:shadow:{channel}:{encoded}")
 }
 
 /// Normalize an identifier based on channel type.
@@ -42,7 +41,7 @@ fn normalize_identifier(identifier: &str, channel: &str) -> String {
         "sms" | "whatsapp" => {
             // Strip non-digit characters, ensure + prefix
             let digits: String = identifier.chars().filter(|c| c.is_ascii_digit()).collect();
-            format!("+{}", digits)
+            format!("+{digits}")
         }
         "email" => identifier.to_lowercase().trim().to_string(),
         _ => identifier.to_string(),

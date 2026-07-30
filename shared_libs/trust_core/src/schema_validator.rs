@@ -54,10 +54,10 @@ impl SchemaValidator {
         let mut schemas = HashMap::new();
 
         let entries = std::fs::read_dir(snapshot_dir)
-            .map_err(|e| format!("Cannot read snapshot directory {:?}: {}", snapshot_dir, e))?;
+            .map_err(|e| format!("Cannot read snapshot directory {snapshot_dir:?}: {e}"))?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| format!("Directory entry error: {}", e))?;
+            let entry = entry.map_err(|e| format!("Directory entry error: {e}"))?;
             let path = entry.path();
 
             if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
@@ -73,17 +73,17 @@ impl SchemaValidator {
             let schema_name = path
                 .file_stem()
                 .and_then(|s| s.to_str())
-                .ok_or_else(|| format!("Invalid filename: {:?}", path))?
+                .ok_or_else(|| format!("Invalid filename: {path:?}"))?
                 .to_string();
 
             let content = std::fs::read_to_string(&path)
-                .map_err(|e| format!("Cannot read schema {:?}: {}", path, e))?;
+                .map_err(|e| format!("Cannot read schema {path:?}: {e}"))?;
 
             let schema_value: serde_json::Value = serde_json::from_str(&content)
-                .map_err(|e| format!("Invalid JSON in schema {:?}: {}", path, e))?;
+                .map_err(|e| format!("Invalid JSON in schema {path:?}: {e}"))?;
 
             let compiled = jsonschema::validator_for(&schema_value)
-                .map_err(|e| format!("Cannot compile schema '{}': {}", schema_name, e))?;
+                .map_err(|e| format!("Cannot compile schema '{schema_name}': {e}"))?;
 
             schemas.insert(schema_name, compiled);
         }
@@ -95,10 +95,10 @@ impl SchemaValidator {
     #[cfg(test)]
     pub fn from_json(name: &str, schema_json: &str) -> Result<Self, String> {
         let schema_value: serde_json::Value =
-            serde_json::from_str(schema_json).map_err(|e| format!("Invalid JSON: {}", e))?;
+            serde_json::from_str(schema_json).map_err(|e| format!("Invalid JSON: {e}"))?;
 
         let compiled = jsonschema::validator_for(&schema_value)
-            .map_err(|e| format!("Cannot compile schema: {}", e))?;
+            .map_err(|e| format!("Cannot compile schema: {e}"))?;
 
         let mut schemas = HashMap::new();
         schemas.insert(name.to_string(), compiled);
@@ -154,7 +154,7 @@ impl SchemaValidator {
         raw: &[u8],
     ) -> Result<serde_json::Value, String> {
         let value: serde_json::Value =
-            serde_json::from_slice(raw).map_err(|e| format!("Invalid JSON: {}", e))?;
+            serde_json::from_slice(raw).map_err(|e| format!("Invalid JSON: {e}"))?;
 
         self.validate(schema_name, &value)
             .map_err(|e| e.to_string())?;

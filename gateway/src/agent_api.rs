@@ -41,7 +41,10 @@ pub async fn list_agents_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents list rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents list rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -65,13 +68,15 @@ pub async fn list_agents_handler(
             Json(serde_json::json!({
                 "agents": agents,
                 "total": total,
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => Json(serde_json::json!({
             "error": format!("{}", e),
             "agents": [],
             "total": 0,
-        })).into_response(),
+        }))
+        .into_response(),
     }
 }
 
@@ -87,7 +92,10 @@ pub async fn register_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents register rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents register rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -128,11 +136,13 @@ pub async fn register_agent_handler(
             Json(serde_json::json!({
                 "status": "registered",
                 "agent": record,
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => Json(serde_json::json!({
             "error": format!("Registration failed: {}", e),
-        })).into_response(),
+        }))
+        .into_response(),
     }
 }
 
@@ -148,7 +158,10 @@ pub async fn get_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents get rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents get rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -179,7 +192,10 @@ pub async fn update_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents update rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents update rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -196,7 +212,8 @@ pub async fn update_agent_handler(
         Ok(updated) => Json(serde_json::json!({
             "status": "updated",
             "agent": updated,
-        })).into_response(),
+        }))
+        .into_response(),
         Err(e) => Json(serde_json::json!({ "error": format!("{}", e) })).into_response(),
     }
 }
@@ -216,7 +233,10 @@ pub async fn revoke_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents revoke rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents revoke rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -261,7 +281,8 @@ pub async fn revoke_agent_handler(
             Json(serde_json::json!({
                 "status": "revoked",
                 "agent": updated,
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => Json(serde_json::json!({ "error": format!("{}", e) })).into_response(),
     }
@@ -282,7 +303,10 @@ pub async fn kill_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents kill rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents kill rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -312,7 +336,8 @@ pub async fn kill_agent_handler(
             Json(serde_json::json!({
                 "status": "killed",
                 "agent_id": agent_id,
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => Json(serde_json::json!({ "error": format!("{}", e) })).into_response(),
     }
@@ -333,7 +358,10 @@ pub async fn revive_agent_handler(
         .validate(&headers, &state.jwt_secret)
         .await
     {
-        tracing::warn!("🚫 /v1/agents revive rejected: Authentication failed ({})", status);
+        tracing::warn!(
+            "🚫 /v1/agents revive rejected: Authentication failed ({})",
+            status
+        );
         let mut response = status.into_response();
         if status == axum::http::StatusCode::UNAUTHORIZED {
             response.headers_mut().insert(
@@ -350,7 +378,8 @@ pub async fn revive_agent_handler(
             Json(serde_json::json!({
                 "status": "revived",
                 "agent_id": agent_id,
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => Json(serde_json::json!({ "error": format!("{}", e) })).into_response(),
     }

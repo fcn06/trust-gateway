@@ -27,7 +27,7 @@ pub struct PolicyFingerprint {
 /// Compute the SHA-256 fingerprint of a policy file.
 pub fn compute_fingerprint(policy_path: &Path) -> Result<String, anyhow::Error> {
     let contents = std::fs::read(policy_path)
-        .map_err(|e| anyhow::anyhow!("Failed to read policy file {:?}: {}", policy_path, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to read policy file {policy_path:?}: {e}"))?;
     let mut hasher = Sha256::new();
     hasher.update(&contents);
     Ok(format!("{:x}", hasher.finalize()))
@@ -60,9 +60,8 @@ pub fn verify_policy_signature(
     if !sig_path.exists() {
         if required {
             anyhow::bail!(
-                "Policy signature required but not found at {:?}. \
-                 Set POLICY_SIGNATURE_REQUIRED=0 to disable.",
-                sig_path
+                "Policy signature required but not found at {sig_path:?}. \
+                 Set POLICY_SIGNATURE_REQUIRED=0 to disable."
             );
         }
         tracing::info!(
@@ -82,26 +81,26 @@ pub fn verify_policy_signature(
             tracing::warn!("⚠️ Policy signature file is empty — skipping verification");
             return Ok(false);
         }
-        
+
         let policy_bytes = std::fs::read(policy_path)?;
 
         // Phase 6: Full Ed25519 detached signature verification
-        use ed25519_dalek::{Verifier, VerifyingKey, Signature};
+        use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
         // Attempt to parse the public key (assume hex or base64 or raw bytes)
         // Here we assume it's provided as a hex string for simplicity
         let pub_key_bytes = hex::decode(pem.trim()).map_err(|e| {
-            anyhow::anyhow!("Failed to decode POLICY_SIGNATURE_PUBLIC_KEY hex: {}", e)
+            anyhow::anyhow!("Failed to decode POLICY_SIGNATURE_PUBLIC_KEY hex: {e}")
         })?;
-        
+
         if pub_key_bytes.len() != 32 {
             anyhow::bail!("Invalid Ed25519 public key length (expected 32 bytes)");
         }
-        
+
         let mut key_bytes = [0u8; 32];
         key_bytes.copy_from_slice(&pub_key_bytes);
         let verifying_key = VerifyingKey::from_bytes(&key_bytes)
-            .map_err(|e| anyhow::anyhow!("Invalid Ed25519 public key: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Invalid Ed25519 public key: {e}"))?;
 
         // Attempt to parse the signature
         // Assuming the signature file contains raw bytes (64 bytes) or hex
@@ -111,8 +110,10 @@ pub fn verify_policy_signature(
             arr
         } else {
             // Try hex decoding
-            let decoded = hex::decode(String::from_utf8_lossy(&sig_bytes).trim())
-                .map_err(|_| anyhow::anyhow!("Signature file must be 64 raw bytes or hex-encoded string"))?;
+            let decoded =
+                hex::decode(String::from_utf8_lossy(&sig_bytes).trim()).map_err(|_| {
+                    anyhow::anyhow!("Signature file must be 64 raw bytes or hex-encoded string")
+                })?;
             if decoded.len() != 64 {
                 anyhow::bail!("Invalid Ed25519 signature length (expected 64 bytes)");
             }
@@ -129,9 +130,7 @@ pub fn verify_policy_signature(
             anyhow::bail!("Policy signature verification failed: invalid signature");
         }
 
-        tracing::info!(
-            "✅ Policy signature file verified successfully against Ed25519 key"
-        );
+        tracing::info!("✅ Policy signature file verified successfully against Ed25519 key");
         Ok(true)
     } else {
         if required {

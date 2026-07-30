@@ -17,11 +17,11 @@ use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
 use crate::gateway::{GatewayResponse, GatewayState, ProposeActionRequest};
-use tracing::Instrument;
 use axum::body::Body;
 use axum::extract::Request;
 use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
+use tracing::Instrument;
 
 /// Build the Axum router with all gateway routes.
 pub fn build_router(state: Arc<GatewayState>) -> Router {
@@ -137,22 +137,10 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             "/.well-known/oauth-protected-resource/*path",
             get(oauth_protected_resource_handler),
         )
-        .route(
-            "/auth/authorize",
-            get(oauth_service_proxy_handler),
-        )
-        .route(
-            "/authorize",
-            get(oauth_service_proxy_handler),
-        )
-        .route(
-            "/auth/authorize/consent",
-            post(oauth_service_proxy_handler),
-        )
-        .route(
-            "/authorize/consent",
-            post(oauth_service_proxy_handler),
-        )
+        .route("/auth/authorize", get(oauth_service_proxy_handler))
+        .route("/authorize", get(oauth_service_proxy_handler))
+        .route("/auth/authorize/consent", post(oauth_service_proxy_handler))
+        .route("/authorize/consent", post(oauth_service_proxy_handler))
         .route("/auth/token", post(oauth_service_proxy_handler))
         .route("/token", post(oauth_service_proxy_handler))
         // Timeline API (Trust Replay)
@@ -209,7 +197,7 @@ async fn host_proxy_handler(
         Err(e) => {
             return (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to read request body: {}", e),
+                format!("Failed to read request body: {e}"),
             )
                 .into_response()
         }
@@ -244,7 +232,7 @@ async fn host_proxy_handler(
                 Err(e) => {
                     return (
                         StatusCode::BAD_GATEWAY,
-                        format!("Failed to read response from Host: {}", e),
+                        format!("Failed to read response from Host: {e}"),
                     )
                         .into_response()
                 }
@@ -273,7 +261,7 @@ async fn host_proxy_handler(
         }
         Err(e) => {
             tracing::error!("❌ Proxy error to Host: {:?}", e);
-            (StatusCode::BAD_GATEWAY, format!("Proxy error: {:?}", e)).into_response()
+            (StatusCode::BAD_GATEWAY, format!("Proxy error: {e:?}")).into_response()
         }
     }
 }
@@ -298,7 +286,7 @@ async fn connector_proxy_handler(
         Err(e) => {
             return (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to read request body: {}", e),
+                format!("Failed to read request body: {e}"),
             )
                 .into_response()
         }
@@ -332,7 +320,7 @@ async fn connector_proxy_handler(
                 Err(e) => {
                     return (
                         StatusCode::BAD_GATEWAY,
-                        format!("Failed to read response from Connector: {}", e),
+                        format!("Failed to read response from Connector: {e}"),
                     )
                         .into_response()
                 }
@@ -361,7 +349,7 @@ async fn connector_proxy_handler(
         }
         Err(e) => {
             tracing::error!("❌ Proxy error to Connector: {}", e);
-            (StatusCode::BAD_GATEWAY, format!("Proxy error: {}", e)).into_response()
+            (StatusCode::BAD_GATEWAY, format!("Proxy error: {e}")).into_response()
         }
     }
 }
@@ -376,8 +364,9 @@ async fn oauth_service_proxy_handler(
         None => {
             return (
                 StatusCode::NOT_IMPLEMENTED,
-                "OAuth2 authorization is only available in the Professional/Enterprise edition."
-            ).into_response();
+                "OAuth2 authorization is only available in the Professional/Enterprise edition.",
+            )
+                .into_response();
         }
     };
 
@@ -389,9 +378,9 @@ async fn oauth_service_proxy_handler(
 
     // Normalize path to ensure /auth prefix is present when calling Standalone OAuth2 Service
     if path_query.starts_with("/authorize") {
-        path_query = format!("/auth{}", path_query);
+        path_query = format!("/auth{path_query}");
     } else if path_query.starts_with("/token") {
-        path_query = format!("/auth{}", path_query);
+        path_query = format!("/auth{path_query}");
     }
 
     let method = req.method().clone();
@@ -403,17 +392,13 @@ async fn oauth_service_proxy_handler(
         Err(e) => {
             return (
                 StatusCode::BAD_REQUEST,
-                format!("Failed to read request body: {}", e),
+                format!("Failed to read request body: {e}"),
             )
                 .into_response()
         }
     };
 
-    let target_url = format!(
-        "{}{}",
-        oauth2_url.trim_end_matches('/'),
-        path_query
-    );
+    let target_url = format!("{}{}", oauth2_url.trim_end_matches('/'), path_query);
 
     tracing::debug!("🔀 Proxying {} {} to OAuth2 Service...", method, path_query);
 
@@ -437,7 +422,7 @@ async fn oauth_service_proxy_handler(
                 Err(e) => {
                     return (
                         StatusCode::BAD_GATEWAY,
-                        format!("Failed to read response from OAuth2 Service: {}", e),
+                        format!("Failed to read response from OAuth2 Service: {e}"),
                     )
                         .into_response()
                 }
@@ -466,7 +451,7 @@ async fn oauth_service_proxy_handler(
         }
         Err(e) => {
             tracing::error!("❌ Proxy error to OAuth2 Service: {}", e);
-            (StatusCode::BAD_GATEWAY, format!("Proxy error: {}", e)).into_response()
+            (StatusCode::BAD_GATEWAY, format!("Proxy error: {e}")).into_response()
         }
     }
 }
@@ -498,11 +483,13 @@ async fn propose_action_handler(
     headers: axum::http::HeaderMap,
     Json(req): Json<ProposeActionRequest>,
 ) -> axum::response::Response {
-    let trace_id = headers.get("x-trace-id")
+    let trace_id = headers
+        .get("x-trace-id")
         .and_then(|h| h.to_str().ok())
         .map(|s| s.to_string())
         .unwrap_or_else(|| {
-            req.arguments.get("_meta")
+            req.arguments
+                .get("_meta")
                 .and_then(|m| m.get("io.lianxi"))
                 .and_then(|i| i.get("correlation_id"))
                 .and_then(|c| c.as_str())
@@ -523,7 +510,7 @@ async fn propose_action_handler(
         // synthetic HeaderMap to pass to the TokenValidator trait.
         let mut validation_headers = headers.clone();
         if !session_jwt.is_empty() && extract_bearer_token(&validation_headers).is_none() {
-            if let Ok(auth_val) = format!("Bearer {}", session_jwt).parse() {
+            if let Ok(auth_val) = format!("Bearer {session_jwt}").parse() {
                 validation_headers.insert(axum::http::header::AUTHORIZATION, auth_val);
             }
         }
@@ -585,7 +572,7 @@ async fn propose_action_handler(
             // Emit an audit event so the rejection appears in the user's activity log!
             let state_emit = state.clone();
             let action_id_emit = action_id.clone();
-            let err_msg = format!("Authentication failed: {}", e);
+            let err_msg = format!("Authentication failed: {e}");
             let action_name = req.action_name.clone();
             tokio::spawn(async move {
                 crate::audit_sink::emit_audit(
@@ -610,7 +597,7 @@ async fn propose_action_handler(
                 Json(GatewayResponse {
                     action_id,
                     status: "denied".to_string(),
-                    error: Some(format!("Authentication failed: {}", e)),
+                    error: Some(format!("Authentication failed: {e}")),
                     result: None,
                     approval_id: None,
                     escalation: None,
@@ -629,8 +616,10 @@ async fn propose_action_handler(
                     if let Some(ag) = meta.get_mut("io.lianxi") {
                         if ag.get("session_jwt").is_none() {
                             if let Some(ag_obj) = ag.as_object_mut() {
-                                ag_obj
-                                    .insert("session_jwt".to_string(), serde_json::json!(session_jwt));
+                                ag_obj.insert(
+                                    "session_jwt".to_string(),
+                                    serde_json::json!(session_jwt),
+                                );
                             }
                         }
                     }
@@ -691,7 +680,7 @@ async fn propose_action_handler(
                     action_id: uuid::Uuid::new_v4().to_string(),
                     status: "denied".to_string(),
                     result: None,
-                    error: Some(format!("Validation error: {}", e)),
+                    error: Some(format!("Validation error: {e}")),
                     approval_id: None,
                     escalation: None,
                 })
@@ -706,13 +695,15 @@ async fn propose_action_handler(
                 action_id: uuid::Uuid::new_v4().to_string(),
                 status: "error".to_string(),
                 result: None,
-                error: Some(format!("{}", e)),
+                error: Some(format!("{e}")),
                 approval_id: None,
                 escalation: None,
             })
             .into_response(),
         }
-    }.instrument(span).await
+    }
+    .instrument(span)
+    .await
 }
 
 /// GET /v1/tools/list — Tool discovery for external runtimes (PicoClaw).
@@ -782,9 +773,7 @@ async fn healthz_handler() -> Json<serde_json::Value> {
     }))
 }
 
-async fn readyz_handler(
-    State(state): State<Arc<GatewayState>>,
-) -> impl IntoResponse {
+async fn readyz_handler(State(state): State<Arc<GatewayState>>) -> impl IntoResponse {
     let nats_state = state.nats.connection_state();
     let is_connected = nats_state == async_nats::connection::State::Connected;
 
@@ -821,8 +810,6 @@ async fn readyz_handler(
     )
 }
 
-
-
 // ──────────────────────────────────────────────────────────
 // Timeline API handlers (Trust Replay)
 // ──────────────────────────────────────────────────────────
@@ -857,8 +844,7 @@ async fn list_actions_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
     let my_did = verified.requester_did.clone();
 
     let kv_store = match state.jetstream.get_key_value("action_timelines").await {
@@ -967,7 +953,7 @@ async fn collect_candidate_action_ids(
     // 1. Tenant index
     if !tenant_id.is_empty() {
         let safe_tenant = tenant_id.replace(':', "_");
-        let key = format!("tenant_{}", safe_tenant);
+        let key = format!("tenant_{safe_tenant}");
         if let Ok(Some(entry)) = index_store.get(&key).await {
             if let Ok(ids) = serde_json::from_slice::<Vec<String>>(&entry) {
                 all_ids.extend(ids);
@@ -979,7 +965,7 @@ async fn collect_candidate_action_ids(
     for did in [Some(my_did), user_did].into_iter().flatten() {
         if !did.is_empty() && did != "unknown" {
             let safe_did = did.replace(':', "_");
-            let key = format!("did_{}", safe_did);
+            let key = format!("did_{safe_did}");
             if let Ok(Some(entry)) = index_store.get(&key).await {
                 if let Ok(ids) = serde_json::from_slice::<Vec<String>>(&entry) {
                     all_ids.extend(ids);
@@ -990,7 +976,7 @@ async fn collect_candidate_action_ids(
 
     // 3. Also include "default" and "unknown" tenant actions for Community Edition
     for fallback_tenant in &["default", "unknown"] {
-        let key = format!("tenant_{}", fallback_tenant);
+        let key = format!("tenant_{fallback_tenant}");
         if let Ok(Some(entry)) = index_store.get(&key).await {
             if let Ok(ids) = serde_json::from_slice::<Vec<String>>(&entry) {
                 all_ids.extend(ids);
@@ -1076,8 +1062,7 @@ async fn get_action_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
     let my_did = verified.requester_did.clone();
 
     let kv_store = match state.jetstream.get_key_value("action_timelines").await {
@@ -1136,8 +1121,7 @@ async fn get_action_timeline_handler(
     let verified = state
         .token_validator
         .validate(&headers, &state.jwt_secret)
-        .await
-        .map_err(|e| e)?;
+        .await?;
     let my_did = verified.requester_did.clone();
 
     let kv_store = match state.jetstream.get_key_value("action_timelines").await {
@@ -1236,7 +1220,7 @@ async fn action_live_sse_handler(
             }
             Err(e) => {
                 tracing::warn!("SSE: Could not subscribe to audit events: {}", e);
-                yield Ok(Event::default().event("error").data(format!("Subscribe failed: {}", e)));
+                yield Ok(Event::default().event("error").data(format!("Subscribe failed: {e}")));
             }
         }
     };
@@ -1261,7 +1245,7 @@ async fn oauth_protected_resource_handler(
             }
         });
 
-    let resource = format!("{}://{}", scheme, host);
+    let resource = format!("{scheme}://{host}");
 
     let json = serde_json::json!({
         "resource": resource,
@@ -1285,7 +1269,7 @@ async fn oauth_protected_resource_handler(
 // Secure WebSocket Proxy (NATS ui.v1.<tenant>.events relay)
 // ──────────────────────────────────────────────────────────
 
-use axum::extract::ws::{WebSocketUpgrade, WebSocket, Message};
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 
 #[derive(serde::Deserialize)]
 struct WsQuery {
@@ -1314,16 +1298,23 @@ async fn ws_handler(
     };
 
     let mut headers_synthetic = axum::http::HeaderMap::new();
-    if let Ok(hdr_val) = axum::http::HeaderValue::from_str(&format!("Bearer {}", token)) {
+    if let Ok(hdr_val) = axum::http::HeaderValue::from_str(&format!("Bearer {token}")) {
         headers_synthetic.insert(axum::http::header::AUTHORIZATION, hdr_val);
     } else {
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
-    let identity = match state.token_validator.validate(&headers_synthetic, &state.jwt_secret).await {
+    let identity = match state
+        .token_validator
+        .validate(&headers_synthetic, &state.jwt_secret)
+        .await
+    {
         Ok(id) => id,
         Err(status) => {
-            tracing::warn!("🚫 WebSocket connection attempt: token validation failed: {}", status);
+            tracing::warn!(
+                "🚫 WebSocket connection attempt: token validation failed: {}",
+                status
+            );
             return status.into_response();
         }
     };
@@ -1332,20 +1323,24 @@ async fn ws_handler(
     ws.on_upgrade(move |socket| handle_ws_socket(socket, state, tenant_id))
 }
 
-async fn handle_ws_socket(
-    mut socket: WebSocket,
-    state: Arc<GatewayState>,
-    tenant_id: String,
-) {
+async fn handle_ws_socket(mut socket: WebSocket, state: Arc<GatewayState>, tenant_id: String) {
     let formatted_tenant = tenant_id.replace(':', "_");
-    let subject = format!("ui.v1.{}.events", formatted_tenant);
-    tracing::info!("🔌 Secure WebSocket connected for tenant: {} (NATS: {})", tenant_id, subject);
+    let subject = format!("ui.v1.{formatted_tenant}.events");
+    tracing::info!(
+        "🔌 Secure WebSocket connected for tenant: {} (NATS: {})",
+        tenant_id,
+        subject
+    );
 
     let mut nats_sub = match state.nats.subscribe(subject.clone()).await {
         Ok(sub) => sub,
         Err(e) => {
             tracing::error!("❌ Failed to subscribe to NATS subject {}: {}", subject, e);
-            let _ = socket.send(Message::Text(format!("{{\"error\": \"Internal NATS subscription failed: {}\"}}", e))).await;
+            let _ = socket
+                .send(Message::Text(format!(
+                    "{{\"error\": \"Internal NATS subscription failed: {e}\"}}"
+                )))
+                .await;
             return;
         }
     };

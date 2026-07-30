@@ -17,8 +17,8 @@ use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::RwLock;
 use trust_core::transport::{
-    McpTransport, TransportDispatchRequest, TransportDispatchResult,
-    TransportError, TransportToolDefinition, TransportType,
+    McpTransport, TransportDispatchRequest, TransportDispatchResult, TransportError,
+    TransportToolDefinition, TransportType,
 };
 
 /// Stdio transport driver for local subprocess-based MCP servers.
@@ -68,7 +68,7 @@ impl StdioMcpDriver {
             "params": params,
         });
         let request_str = serde_json::to_string(&request)
-            .map_err(|e| TransportError::Internal(format!("Serialization failed: {}", e)))?;
+            .map_err(|e| TransportError::Internal(format!("Serialization failed: {e}")))?;
 
         // Spawn the subprocess with security isolation.
         let mut cmd = tokio::process::Command::new(&self.command);
@@ -90,29 +90,24 @@ impl StdioMcpDriver {
         }
 
         let mut child = cmd.spawn().map_err(|e| {
-            TransportError::ConnectionFailed(format!(
-                "Failed to spawn '{}': {}",
-                self.command, e
-            ))
+            TransportError::ConnectionFailed(format!("Failed to spawn '{}': {}", self.command, e))
         })?;
 
         // Write the request to stdin.
         if let Some(mut stdin) = child.stdin.take() {
-            stdin
-                .write_all(request_str.as_bytes())
-                .await
-                .map_err(|e| {
-                    TransportError::ProtocolError(format!("Failed to write to stdin: {}", e))
-                })?;
+            stdin.write_all(request_str.as_bytes()).await.map_err(|e| {
+                TransportError::ProtocolError(format!("Failed to write to stdin: {e}"))
+            })?;
             stdin.write_all(b"\n").await.ok();
             // Close stdin to signal end of input.
             drop(stdin);
         }
 
         // Read the response from stdout with a timeout.
-        let stdout = child.stdout.take().ok_or_else(|| {
-            TransportError::ProtocolError("No stdout handle".into())
-        })?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| TransportError::ProtocolError("No stdout handle".into()))?;
         let mut reader = BufReader::new(stdout);
         let mut response_line = String::new();
 
@@ -137,8 +132,7 @@ impl StdioMcpDriver {
             Ok(Ok(_)) => {}
             Ok(Err(e)) => {
                 return Err(TransportError::ProtocolError(format!(
-                    "Failed to read from stdout: {}",
-                    e
+                    "Failed to read from stdout: {e}"
                 )));
             }
             Err(_) => {
@@ -153,8 +147,8 @@ impl StdioMcpDriver {
         let _ = child.wait().await;
 
         // Parse the JSON-RPC response.
-        let response: serde_json::Value = serde_json::from_str(response_line.trim())
-            .map_err(|e| {
+        let response: serde_json::Value =
+            serde_json::from_str(response_line.trim()).map_err(|e| {
                 TransportError::ProtocolError(format!(
                     "Invalid JSON-RPC response: {} (raw: '{}')",
                     e,
@@ -169,8 +163,7 @@ impl StdioMcpDriver {
                 .and_then(|v| v.as_str())
                 .unwrap_or("Unknown error");
             return Err(TransportError::ProtocolError(format!(
-                "JSON-RPC error: {}",
-                message
+                "JSON-RPC error: {message}"
             )));
         }
 
@@ -250,11 +243,7 @@ impl McpTransport for StdioMcpDriver {
                     output: content.or_else(|| {
                         Some(serde_json::json!([{"type": "text", "text": output_text}]))
                     }),
-                    error: if is_error {
-                        Some(output_text)
-                    } else {
-                        None
-                    },
+                    error: if is_error { Some(output_text) } else { None },
                     duration_ms: start.elapsed().as_millis() as u64,
                 })
             }
@@ -270,10 +259,7 @@ impl McpTransport for StdioMcpDriver {
             .output()
             .await
             .map_err(|e| {
-                TransportError::Internal(format!(
-                    "Cannot check command '{}': {}",
-                    self.command, e
-                ))
+                TransportError::Internal(format!("Cannot check command '{}': {}", self.command, e))
             })?;
 
         if output.status.success() {
@@ -287,10 +273,7 @@ impl McpTransport for StdioMcpDriver {
     }
 
     async fn shutdown(&self) -> Result<(), TransportError> {
-        tracing::info!(
-            "🔌 Stdio transport shutting down: {}",
-            self.command
-        );
+        tracing::info!("🔌 Stdio transport shutting down: {}", self.command);
         *self.initialized.write().await = false;
         Ok(())
     }

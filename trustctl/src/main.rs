@@ -35,10 +35,12 @@ fn main() -> Result<()> {
 }
 
 fn verify_audit_log(path_str: &str) -> Result<()> {
-    println!("Verifying audit log integrity: {}", path_str);
+    println!("Verifying audit log integrity: {path_str}");
     let path = Path::new(path_str);
     if !path.exists() {
-        println!("Audit file not found at path: {}. Generating verification mock report.", path_str);
+        println!(
+            "Audit file not found at path: {path_str}. Generating verification mock report."
+        );
         println!("[PASS] 0 lines checked. Chain head signature intact.");
         return Ok(());
     }
@@ -46,9 +48,13 @@ fn verify_audit_log(path_str: &str) -> Result<()> {
     let content = fs::read_to_string(path)?;
     let mut count = 0;
     for line in content.lines() {
-        if line.trim().is_empty() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
         count += 1;
     }
-    println!("[PASS] Verified {} audit log entries. Cryptographic chain intact.", count);
+    println!(
+        "[PASS] Verified {count} audit log entries. Cryptographic chain intact."
+    );
     Ok(())
 }

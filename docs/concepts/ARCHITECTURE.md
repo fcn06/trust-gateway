@@ -30,12 +30,12 @@ The Trust Gateway enforces the 3-pillar zero-trust value proposition:
 
 | Pillar | Domain Crate | Responsibility |
 | :--- | :--- | :--- |
-| **Pillar 1** | [`crates/trust-model`](../crates/trust-model) | Pure domain model definitions (`ProposedAction`, `ExecutionGrant`, `TransactionOutcomeState`). |
-| **Pillar 2** | [`crates/trust-policy`](../crates/trust-policy) | Attribute-based policy evaluator engine. |
-| **Pillar 2** | [`crates/trust-canonical`](../crates/trust-canonical) | RFC 8785 JSON canonicalizer & SHA-256 `input_hash` digest calculation. |
-| **Pillar 2** | [`crates/trust-grants`](../crates/trust-grants) | Ed25519 `ExecutionGrant` issuance and key management. |
-| **Pillar 2** | [`crates/trust-audit`](../crates/trust-audit) | Hash-chained `AuditEvent` ledger and audit sinks. |
-| **Pillar 3** | [`crates/trust-auth`](../crates/trust-auth) | Strict JWT signature and claims contract verification. |
-| **Pillar 3** | [`crates/trust-executor-sdk`](../crates/trust-executor-sdk) | Abstract Executor trait & outcome state reconciliation. |
-| **Pillar 3** | [`crates/trust-egress`](../crates/trust-egress) | Regex & LLM-powered PII & secret egress scrubbing. |
-| **Pillar 3** | [`verifier/`](../verifier) | Standalone zero-dependency Ed25519 execution grant verifier library. |
+| **Pillar 1** | [`crates/trust-model`](../../crates/trust-model) | Pure domain model definitions (`ProposedAction`, `ExecutionGrant`, `TransactionOutcomeState`). |
+| **Pillar 2** | [`crates/trust-policy`](../../crates/trust-policy) | Attribute-based policy evaluator engine. |
+| **Pillar 2** | [`crates/trust-canonical`](../../crates/trust-canonical) | RFC 8785 JSON canonicalizer & SHA-256 `input_hash` digest calculation. |
+| **Pillar 2** | [`crates/trust-grants`](../../crates/trust-grants) | Ed25519 `ExecutionGrant` issuance and key management. |
+| **Pillar 2** | [`crates/trust-audit`](../../crates/trust-audit) | Hash-chained `AuditEvent` ledger and audit sinks. |
+| **Pillar 3** | [`crates/trust-auth`](../../crates/trust-auth) | Strict JWT signature and claims contract verification. |
+| **Pillar 3** | [`crates/trust-executor-sdk`](../../crates/trust-executor-sdk) | Abstract Executor trait & outcome state reconciliation. |
+| **Pillar 3** | [`crates/trust-egress`](../../crates/trust-egress) | Regex & LLM-powered PII & secret egress scrubbing. |
+| **Pillar 3** | [`verifier/`](../../verifier) | Standalone zero-dependency Ed25519 execution grant verifier library. |

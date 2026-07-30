@@ -3,13 +3,13 @@ use clap::Parser;
 use std::sync::Arc;
 use tracing_subscriber::EnvFilter;
 
-mod runtime;
-mod native_tools;
 mod connectors;
-mod vp;
-mod token_store;
 mod jetstream_nonce_store;
+mod native_tools;
 pub mod nats_token_broker;
+mod runtime;
+mod token_store;
+mod vp;
 
 #[derive(Parser, Debug)]
 #[command(name = "executor_host")]
@@ -39,16 +39,18 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv().ok();
-    
+
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,executor_host=debug".into()),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| "info,executor_host=debug".into()),
         )
         .init();
 
     let args = Args::parse();
-    tracing::info!("🚀 Unified Executor Host starting [profile={}]", args.profile);
+    tracing::info!(
+        "🚀 Unified Executor Host starting [profile={}]",
+        args.profile
+    );
 
     // 1. Connect to NATS
     let mut nats_options = if let Some(seed) = identity_context::load_secret("NATS_NKEY_SEED") {
@@ -93,15 +95,12 @@ async fn main() -> Result<()> {
 
     // 3. Initialize Executor based on profile
     let executor: Arc<dyn trust_core::executor::Executor> = match args.profile.as_str() {
-        "native-tool" | "native-skill" => {
-            Arc::new(native_tools::NativeToolExecutor::new(&args.native_tools_dir, nats.clone())?)
-        }
-        "connector" => {
-            Arc::new(connectors::ConnectorExecutor::new(nats.clone()).await?)
-        }
-        "vp" => {
-            Arc::new(vp::VpExecutor::new(nats.clone())?)
-        }
+        "native-tool" | "native-skill" => Arc::new(native_tools::NativeToolExecutor::new(
+            &args.native_tools_dir,
+            nats.clone(),
+        )?),
+        "connector" => Arc::new(connectors::ConnectorExecutor::new(nats.clone()).await?),
+        "vp" => Arc::new(vp::VpExecutor::new(nats.clone())?),
         _ => anyhow::bail!("Unknown profile: {}", args.profile),
     };
 
@@ -122,7 +121,10 @@ fn build_grant_validator(args: &Args) -> Result<trust_core::grant_validator::Gra
     if let Some(ref key_path) = args.grant_verify_key_path {
         let path = std::path::Path::new(key_path);
         if path.is_dir() {
-            tracing::info!("🔍 Loading grant verification keys from directory: {:?}", path);
+            tracing::info!(
+                "🔍 Loading grant verification keys from directory: {:?}",
+                path
+            );
             let mut key_count = 0;
             for entry in std::fs::read_dir(path)? {
                 let entry = entry?;
@@ -134,7 +136,11 @@ fn build_grant_validator(args: &Args) -> Result<trust_core::grant_validator::Gra
                                 let kid = filename.to_string_lossy().to_string();
                                 let pem = std::fs::read_to_string(&file_path)?;
                                 validator = validator.with_ed25519_key(&kid, &pem)?;
-                                tracing::info!("✅ Loaded Ed25519 verification key: {} (kid={})", file_path.display(), kid);
+                                tracing::info!(
+                                    "✅ Loaded Ed25519 verification key: {} (kid={})",
+                                    file_path.display(),
+                                    kid
+                                );
                                 key_count += 1;
                             }
                         }
@@ -142,18 +148,28 @@ fn build_grant_validator(args: &Args) -> Result<trust_core::grant_validator::Gra
                 }
             }
             if key_count == 0 {
-                anyhow::bail!("No key files (.pem, .pub, .key) found in directory {:?}", path);
+                anyhow::bail!(
+                    "No key files (.pem, .pub, .key) found in directory {path:?}"
+                );
             }
         } else {
             let pem = std::fs::read_to_string(key_path)?;
-            let kid = std::env::var("GRANT_SIGNING_KEY_ID").unwrap_or_else(|_| "default".to_string());
+            let kid =
+                std::env::var("GRANT_SIGNING_KEY_ID").unwrap_or_else(|_| "default".to_string());
             validator = validator.with_ed25519_key(&kid, &pem)?;
             validator = validator.with_fallback_ed25519_key(&pem)?;
-            tracing::info!("✅ Loaded single Ed25519 verification key from {:?} (kid={}, fallback enabled)", key_path, kid);
+            tracing::info!(
+                "✅ Loaded single Ed25519 verification key from {:?} (kid={}, fallback enabled)",
+                key_path,
+                kid
+            );
         }
     }
 
-    let jwt_secret_wrapper = args.jwt_secret.clone().map(identity_context::SecretString::new)
+    let jwt_secret_wrapper = args
+        .jwt_secret
+        .clone()
+        .map(identity_context::SecretString::new)
         .or_else(|| identity_context::load_secret("JWT_SECRET"));
 
     if let Some(ref secret) = jwt_secret_wrapper {
@@ -162,7 +178,9 @@ fn build_grant_validator(args: &Args) -> Result<trust_core::grant_validator::Gra
     }
 
     if !validator.has_keys() {
-        anyhow::bail!("No grant verification key configured (set GRANT_VERIFY_KEY_PATH or JWT_SECRET)");
+        anyhow::bail!(
+            "No grant verification key configured (set GRANT_VERIFY_KEY_PATH or JWT_SECRET)"
+        );
     }
 
     Ok(validator)

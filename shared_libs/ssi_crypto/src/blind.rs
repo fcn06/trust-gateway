@@ -7,9 +7,12 @@
 //! import the `persistence` interface. This module provides only the
 //! key derivation, HMAC-based key blinding, and encrypt/decrypt ops.
 
-use chacha20poly1305::{aead::{Aead, KeyInit}, XChaCha20Poly1305, XNonce};
+use chacha20poly1305::{
+    aead::{Aead, KeyInit},
+    XChaCha20Poly1305, XNonce,
+};
 use hkdf::Hkdf;
-use hmac::{Hmac, Mac, digest::KeyInit as HmacKeyInit};
+use hmac::{digest::KeyInit as HmacKeyInit, Hmac, Mac};
 use sha2::Sha256;
 
 const BLIND_VAULT_CONTEXT: &[u8] = b"sovereign:blind-vault:encryption";
@@ -42,7 +45,7 @@ pub fn blind_encrypt(value: &[u8], enc_key: &[u8; 32]) -> Result<Vec<u8>, String
     let cipher = XChaCha20Poly1305::new(key);
 
     let mut nonce_bytes = [0u8; 24];
-    getrandom::getrandom(&mut nonce_bytes).map_err(|e| format!("Nonce entropy error: {}", e))?;
+    getrandom::getrandom(&mut nonce_bytes).map_err(|e| format!("Nonce entropy error: {e}"))?;
     let nonce = XNonce::from_slice(&nonce_bytes);
 
     let ciphertext = cipher
@@ -98,8 +101,7 @@ pub fn derive_link_nkey_pubkey(master_seed: &[u8]) -> Result<[u8; 32], String> {
 
 /// Compute a node ID from a house salt.
 pub fn compute_node_id(house_salt: &[u8]) -> String {
-    let mut mac =
-        <Hmac<Sha256> as Mac>::new_from_slice(house_salt).expect("HMAC key init failed");
+    let mut mac = <Hmac<Sha256> as Mac>::new_from_slice(house_salt).expect("HMAC key init failed");
     mac.update(b"sovereign-node-id");
     hex::encode(mac.finalize().into_bytes())
 }

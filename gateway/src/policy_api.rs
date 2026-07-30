@@ -8,7 +8,9 @@
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use trust_core::action::{ActionDescriptor, ActionRequest, OperationKind, infer_operation, infer_category};
+use trust_core::action::{
+    infer_category, infer_operation, ActionDescriptor, ActionRequest, OperationKind,
+};
 use trust_core::actor::{ActorContext, AuthLevel, SourceContext};
 use trust_core::decision::ActionDecision;
 use trust_core::traits::PolicyEngine;
@@ -75,11 +77,11 @@ pub async fn create_rule_handler(
     // Convert amount thresholds to "amount currency" format if present
     let min_amount_str = req.min_amount.map(|a| {
         let cur = req.currency.as_deref().unwrap_or("EUR");
-        format!("{:.2} {}", a, cur)
+        format!("{a:.2} {cur}")
     });
     let max_amount_str = req.max_amount.map(|a| {
         let cur = req.currency.as_deref().unwrap_or("EUR");
-        format!("{:.2} {}", a, cur)
+        format!("{a:.2} {cur}")
     });
 
     let rule_json = serde_json::json!({
@@ -200,7 +202,7 @@ pub async fn simulate_handler(
                 } => (
                     "require_approval".to_string(),
                     reason.clone(),
-                    Some(format!("{:?}", tier)),
+                    Some(format!("{tier:?}")),
                     false,
                     policy_id.clone(),
                 ),
@@ -225,7 +227,7 @@ pub async fn simulate_handler(
         }
         Err(e) => Json(SimulateResponse {
             decision: "error".to_string(),
-            reason: format!("Policy evaluation error: {}", e),
+            reason: format!("Policy evaluation error: {e}"),
             tier: None,
             matched_rule_id: String::new(),
             proof_required: false,

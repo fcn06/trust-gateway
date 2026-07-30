@@ -24,20 +24,20 @@ impl JetStreamAgentRegistry {
         self.js
             .get_key_value("agent_registry")
             .await
-            .map_err(|e| StoreError::Backend(format!("KV access failed: {}", e)))
+            .map_err(|e| StoreError::Backend(format!("KV access failed: {e}")))
     }
 
     async fn get_index_store(&self) -> Result<async_nats::jetstream::kv::Store, StoreError> {
         self.js
             .get_key_value("agent_source_index")
             .await
-            .map_err(|e| StoreError::Backend(format!("KV index access failed: {}", e)))
+            .map_err(|e| StoreError::Backend(format!("KV index access failed: {e}")))
     }
 
     /// Write the source_type → agent_id mapping to the secondary index.
     async fn index_source(&self, agent_id: &str, agent_type: AgentType, policy_profile: &str) {
         // Build a lookup key from the agent_type to enable resolve_by_source.
-        let source_key = format!("type_{}", agent_type);
+        let source_key = format!("type_{agent_type}");
         let agent_id_owned = agent_id.to_string();
         let agent_id_vec = agent_id_owned.as_bytes().to_vec();
 
@@ -45,7 +45,7 @@ impl JetStreamAgentRegistry {
             // Index by policy_profile (commonly maps to source-level identity)
             let _ = index
                 .put(
-                    &format!("profile_{}", policy_profile),
+                    &format!("profile_{policy_profile}"),
                     agent_id_vec.clone().into(),
                 )
                 .await;
@@ -55,7 +55,7 @@ impl JetStreamAgentRegistry {
 
             // Also index by agent_id itself for direct lookup
             let _ = index
-                .put(&format!("id_{}", agent_id), agent_id_vec.into())
+                .put(&format!("id_{agent_id}"), agent_id_vec.into())
                 .await;
         }
     }
@@ -89,7 +89,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         store
             .put(&agent_id, json.into())
             .await
-            .map_err(|e| StoreError::Backend(format!("KV put failed: {}", e)))?;
+            .map_err(|e| StoreError::Backend(format!("KV put failed: {e}")))?;
 
         // Update secondary index
         self.index_source(&agent_id, record.agent_type, &record.policy_profile)
@@ -113,7 +113,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
                 Ok(Some(record))
             }
             Ok(None) => Ok(None),
-            Err(e) => Err(StoreError::Backend(format!("KV get failed: {}", e))),
+            Err(e) => Err(StoreError::Backend(format!("KV get failed: {e}"))),
         }
     }
 
@@ -168,7 +168,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         store
             .put(agent_id, json.into())
             .await
-            .map_err(|e| StoreError::Backend(format!("KV put failed: {}", e)))?;
+            .map_err(|e| StoreError::Backend(format!("KV put failed: {e}")))?;
 
         // Re-index
         self.index_source(agent_id, record.agent_type, &record.policy_profile)
@@ -237,7 +237,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         store
             .put(agent_id, json.into())
             .await
-            .map_err(|e| StoreError::Backend(format!("KV put failed: {}", e)))?;
+            .map_err(|e| StoreError::Backend(format!("KV put failed: {e}")))?;
 
         tracing::warn!(
             "🔴 KILL SWITCH activated for agent: {} ({})",
@@ -267,7 +267,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         store
             .put(agent_id, json.into())
             .await
-            .map_err(|e| StoreError::Backend(format!("KV put failed: {}", e)))?;
+            .map_err(|e| StoreError::Backend(format!("KV put failed: {e}")))?;
 
         tracing::info!(
             "🟢 Kill switch deactivated for agent: {} ({})",
@@ -293,7 +293,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         store
             .put(agent_id, json.into())
             .await
-            .map_err(|e| StoreError::Backend(format!("KV put failed: {}", e)))?;
+            .map_err(|e| StoreError::Backend(format!("KV put failed: {e}")))?;
 
         Ok(())
     }
@@ -312,7 +312,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
 
         // 2. Try the secondary index: profile:<source_type>
         if let Ok(index) = self.get_index_store().await {
-            let lookup_key = format!("profile_{}", source_type);
+            let lookup_key = format!("profile_{source_type}");
             if let Ok(Some(entry)) = index.get(&lookup_key).await {
                 let agent_id = String::from_utf8_lossy(&entry).to_string();
                 return self.get(&agent_id).await;

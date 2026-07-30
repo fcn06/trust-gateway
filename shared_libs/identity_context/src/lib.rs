@@ -20,8 +20,8 @@ pub mod did;
 pub mod jwt;
 pub mod meta;
 pub mod models;
-pub mod source;
 pub mod secrets;
+pub mod source;
 
 // Re-export key types at crate root.
 pub use did::*;
@@ -41,5 +41,5 @@ pub use jwt::{
 };
 pub use meta::{extract_meta, strip_meta, validate_tenant_consistency, MetaPayload};
 pub use models::{IdentityContext, ProposedAction, TransportKind};
-pub use source::{AuthMode, SourceRegistration, SourceType};
 pub use secrets::{load_secret, SecretString};
+pub use source::{AuthMode, SourceRegistration, SourceType};

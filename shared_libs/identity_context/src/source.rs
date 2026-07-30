@@ -96,15 +96,19 @@ impl AuthMode {
     /// Returns true if the credential matches and (if applicable) is not expired.
     pub fn validate(&self, credential: &str) -> bool {
         match self {
-            AuthMode::ApiKey { key_hash, expires_at, .. } => {
+            AuthMode::ApiKey {
+                key_hash,
+                expires_at,
+                ..
+            } => {
                 use sha2::{Digest, Sha256};
                 let hash = hex::encode(Sha256::digest(credential.as_bytes()));
                 let expected = key_hash.strip_prefix("sha256:").unwrap_or(key_hash);
-                
+
                 if hash != expected {
                     return false;
                 }
-                
+
                 // Phase 6: Scoped API key lifecycle management (expiry check)
                 if let Some(exp) = expires_at {
                     let now = std::time::SystemTime::now()
@@ -116,7 +120,7 @@ impl AuthMode {
                         return false;
                     }
                 }
-                
+
                 true
             }
             AuthMode::MutualTls { .. } => {

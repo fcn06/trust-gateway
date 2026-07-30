@@ -16,7 +16,6 @@ use axum::{
     },
     Json,
 };
-use identity_context::AuthVerifier;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use std::sync::Arc;
@@ -113,13 +112,15 @@ pub async fn sse_handler(
                         "http"
                     }
                 });
-            let metadata_url = format!("{}://{}/.well-known/oauth-protected-resource", scheme, host);
-            let header_value = format!("Bearer realm=\"trust_gateway\", resource_metadata=\"{}\"", metadata_url);
+            let metadata_url =
+                format!("{scheme}://{host}/.well-known/oauth-protected-resource");
+            let header_value = format!(
+                "Bearer realm=\"trust_gateway\", resource_metadata=\"{metadata_url}\""
+            );
             if let Ok(val) = axum::http::HeaderValue::from_str(&header_value) {
-                response.headers_mut().insert(
-                    axum::http::header::WWW_AUTHENTICATE,
-                    val,
-                );
+                response
+                    .headers_mut()
+                    .insert(axum::http::header::WWW_AUTHENTICATE, val);
             }
         }
         return response;
@@ -165,8 +166,7 @@ pub async fn sse_handler(
         });
 
     let messages_url = format!(
-        "{}://{}/v1/mcp/messages?session_id={}",
-        scheme, host, session_id
+        "{scheme}://{host}/v1/mcp/messages?session_id={session_id}"
     );
 
     tracing::info!("🔌 MCP SSE connection established (session={})", session_id);
@@ -177,7 +177,7 @@ pub async fn sse_handler(
     });
 
     let notification_stream =
-        tokio_stream::wrappers::ReceiverStream::new(rx).map(|event| Ok::<_, Infallible>(event));
+        tokio_stream::wrappers::ReceiverStream::new(rx).map(Ok::<_, Infallible>);
 
     // Combine streams and attach the guard to the closure to ensure it lives as long as the stream.
     let stream = initial.chain(notification_stream).map(move |event| {
@@ -274,7 +274,7 @@ pub async fn messages_handler(
         }
         other => {
             tracing::warn!("🔴 Unknown MCP method: {}", other);
-            JsonRpcResponse::error(req.id, -32601, format!("Method not found: {}", other))
+            JsonRpcResponse::error(req.id, -32601, format!("Method not found: {other}"))
         }
     };
 
@@ -323,10 +323,7 @@ pub async fn handle_tools_list(
     // 2. Pull bundle-filtered tools from ToolRegistry
     if let Some(ref registry) = state.tool_registry {
         registry
-            .refresh_if_stale(
-                &state.http_client,
-                &state.connectors.host_url,
-            )
+            .refresh_if_stale(&state.http_client, &state.connectors.host_url)
             .await;
 
         // Bundle-specific tools
@@ -354,7 +351,6 @@ pub async fn handle_tools_list(
                 operation_attributes: Default::default(),
             });
         }
-
 
         // Default tools (always visible, configured by admin)
         let existing_names: std::collections::HashSet<String> = base_descriptors
@@ -388,7 +384,6 @@ pub async fn handle_tools_list(
             }
         }
     }
-
 
     // 3. Intercept and enrich tools list using the pluggable ToolListingOverlay
     let enriched_descriptors = match state
@@ -431,7 +426,6 @@ pub async fn handle_tools_list(
     )
 }
 
-
 // ─── NATS KV Session State ──────────────────────────────────
 
 const SESSION_KV_BUCKET: &str = "mcp_session_state";
@@ -442,7 +436,7 @@ async fn get_session_bundle(js: &async_nats::jetstream::Context, session_id: &st
     match js.get_key_value(SESSION_KV_BUCKET).await {
         Ok(store) => {
             // RULE[020_JETSTREAM_KEYS.md]: Use _ as separator
-            let key = format!("session_{}", session_id.replace(':', "_").replace('/', "_"));
+            let key = format!("session_{}", session_id.replace([':', '/'], "_"));
             match store.get(&key).await {
                 Ok(Some(bytes)) => {
                     let val = String::from_utf8_lossy(&bytes);
@@ -466,7 +460,7 @@ async fn get_session_bundle(js: &async_nats::jetstream::Context, session_id: &st
 async fn set_session_bundle(js: &async_nats::jetstream::Context, session_id: &str, bundle: &str) {
     if let Ok(store) = js.get_key_value(SESSION_KV_BUCKET).await {
         // RULE[020_JETSTREAM_KEYS.md]: Use _ as separator
-        let key = format!("session_{}", session_id.replace(':', "_").replace('/', "_"));
+        let key = format!("session_{}", session_id.replace([':', '/'], "_"));
         let val = serde_json::json!({
             "active_bundle": bundle,
             "last_updated": chrono::Utc::now().to_rfc3339(),
@@ -533,12 +527,16 @@ async fn handle_tools_call(
     // RULE[010_JWT_CONTRACTS.md]: Use TokenValidator instead of raw HmacAuthVerifier
     let mut headers = axum::http::HeaderMap::new();
     if !token_to_verify.is_empty() {
-        if let Ok(val) = axum::http::HeaderValue::from_str(&format!("Bearer {}", token_to_verify)) {
+        if let Ok(val) = axum::http::HeaderValue::from_str(&format!("Bearer {token_to_verify}")) {
             headers.insert(axum::http::header::AUTHORIZATION, val);
         }
     }
 
-    let base_identity = match state.token_validator.validate(&headers, &state.jwt_secret).await {
+    let base_identity = match state
+        .token_validator
+        .validate(&headers, &state.jwt_secret)
+        .await
+    {
         Ok(ctx) => ctx,
         Err(e) => {
             tracing::warn!("MCP SSE JWT verification failed: {}", e);
@@ -546,7 +544,7 @@ async fn handle_tools_call(
             trust_auth::IdentityContext {
                 tenant_id: String::new(),
                 owner_did: "mcp-client".to_string(),
-                requester_did: format!("picoclaw:{}", session_id),
+                requester_did: format!("picoclaw:{session_id}"),
                 session_jwt: token_to_verify.clone(),
                 auth_level: Default::default(),
                 auth_method: Default::default(),
@@ -569,7 +567,7 @@ async fn handle_tools_call(
         if fallback_identity.tenant_id.is_empty() {
             fallback_identity.tenant_id = session_id.to_string();
             fallback_identity.owner_did = "mcp-client".to_string();
-            fallback_identity.requester_did = format!("picoclaw:{}", session_id);
+            fallback_identity.requester_did = format!("picoclaw:{session_id}");
         }
         fallback_identity.source = identity_context::models::SourceContext {
             source_type: identity_context::models::SourceType::McpClient,
@@ -735,7 +733,7 @@ async fn handle_tools_call(
         }
         Err(e) => {
             tracing::error!("❌ MCP tools/call gateway error: {}", e);
-            JsonRpcResponse::error(id, -32603, format!("Internal gateway error: {}", e))
+            JsonRpcResponse::error(id, -32603, format!("Internal gateway error: {e}"))
         }
     }
 }

@@ -22,7 +22,7 @@ impl JetStreamApprovalStore {
         self.js
             .get_key_value("approval_records")
             .await
-            .map_err(|e| StoreError::Backend(format!("KV lookup failed: {}", e)))
+            .map_err(|e| StoreError::Backend(format!("KV lookup failed: {e}")))
     }
 
     /// Fetch the record AND its current KV revision for CAS updates.
@@ -188,7 +188,7 @@ impl trust_core::traits::ApprovalStore for JetStreamApprovalStore {
     async fn mark_execution_failed(&self, id: &str, error: &str) -> Result<(), StoreError> {
         let error_msg = error.to_string();
         self.transition(id, ApprovalStatus::ExecutionFailed, move |record| {
-            record.resolution_method = Some(format!("execution_failed: {}", error_msg));
+            record.resolution_method = Some(format!("execution_failed: {error_msg}"));
         })
         .await
     }

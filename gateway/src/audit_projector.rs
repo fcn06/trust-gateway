@@ -333,7 +333,7 @@ async fn process_audit_message(
     // works even if the timeline is already persisted.
     if let Some(ref index_store) = tenant_index {
         let safe_tenant = tenant_id.replace(':', "_");
-        let index_key = format!("tenant_{}", safe_tenant);
+        let index_key = format!("tenant_{safe_tenant}");
         let mut action_ids: Vec<String> = match index_store.get(&index_key).await {
             Ok(Some(entry)) => serde_json::from_slice::<Vec<String>>(&entry).unwrap_or_default(),
             _ => Vec::new(),
@@ -358,7 +358,7 @@ async fn process_audit_message(
         .flatten()
         {
             let safe_did = did_key.replace(':', "_");
-            let did_index_key = format!("did_{}", safe_did);
+            let did_index_key = format!("did_{safe_did}");
             let mut did_action_ids: Vec<String> = match index_store.get(&did_index_key).await {
                 Ok(Some(entry)) => {
                     serde_json::from_slice::<Vec<String>>(&entry).unwrap_or_default()
@@ -397,7 +397,7 @@ fn new_timeline(
         tenant_id: tenant_id.to_string(),
         approval_id: None,
         summary: ActionTimelineSummary {
-            title: format!("Action {}", action_id),
+            title: format!("Action {action_id}"),
             action_name: String::new(),
             source_type: String::new(),
             status: projected_status(event_type, details),

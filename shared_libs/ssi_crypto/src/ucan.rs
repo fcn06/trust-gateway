@@ -81,12 +81,12 @@ pub enum UcanValidationResult {
 
 /// Encode a UCAN token to a JSON string.
 pub fn encode_ucan(token: &UcanToken) -> Result<String, String> {
-    serde_json::to_string(token).map_err(|e| format!("UCAN encoding failed: {}", e))
+    serde_json::to_string(token).map_err(|e| format!("UCAN encoding failed: {e}"))
 }
 
 /// Decode a UCAN token from a JSON string.
 pub fn decode_ucan(json: &str) -> Result<UcanToken, String> {
-    serde_json::from_str(json).map_err(|e| format!("UCAN decoding failed: {}", e))
+    serde_json::from_str(json).map_err(|e| format!("UCAN decoding failed: {e}"))
 }
 
 /// Validate whether a UCAN token grants a specific capability.
@@ -266,7 +266,12 @@ pub fn generate_hashed_proof(
     agent_seed: &[u8; 32],
 ) -> Result<HashedCapabilityProof, String> {
     // Verify capability matches
-    if !capability_satisfies(&ucan_token.capabilities[0], target_cap) && ucan_token.capabilities.iter().all(|c| !capability_satisfies(c, target_cap)) {
+    if !capability_satisfies(&ucan_token.capabilities[0], target_cap)
+        && ucan_token
+            .capabilities
+            .iter()
+            .all(|c| !capability_satisfies(c, target_cap))
+    {
         return Err("UCAN does not grant the requested capability".to_string());
     }
 
@@ -406,7 +411,7 @@ mod tests {
         let required = test_capability("messaging", "send");
         match validate_ucan(&token, &required, 100) {
             UcanValidationResult::Authorized => {}
-            other => panic!("Expected Authorized, got {:?}", other),
+            other => panic!("Expected Authorized, got {other:?}"),
         }
     }
 
@@ -416,7 +421,7 @@ mod tests {
         let required = test_capability("payment", "transfer");
         match validate_ucan(&token, &required, 100) {
             UcanValidationResult::RequiresApproval => {}
-            other => panic!("Expected RequiresApproval, got {:?}", other),
+            other => panic!("Expected RequiresApproval, got {other:?}"),
         }
     }
 
@@ -427,7 +432,7 @@ mod tests {
         let required = test_capability("messaging", "send");
         match validate_ucan(&token, &required, 100) {
             UcanValidationResult::Denied(_) => {}
-            other => panic!("Expected Denied, got {:?}", other),
+            other => panic!("Expected Denied, got {other:?}"),
         }
     }
 
@@ -438,7 +443,7 @@ mod tests {
         let required = test_capability("payment", "transfer");
         match validate_ucan(&token, &required, 100) {
             UcanValidationResult::Authorized => {}
-            other => panic!("Expected Authorized, got {:?}", other),
+            other => panic!("Expected Authorized, got {other:?}"),
         }
     }
 
@@ -488,8 +493,7 @@ mod tests {
             signature: None,
         };
 
-        let result =
-            verify_action_response(&response, "abcd1234", &identity.public_key).unwrap();
+        let result = verify_action_response(&response, "abcd1234", &identity.public_key).unwrap();
         assert!(!result);
     }
 
@@ -498,7 +502,7 @@ mod tests {
         use crate::did::create_did_twin;
         let issuer_identity = create_did_twin();
         let mut token = test_ucan();
-        
+
         sign_ucan(&mut token, &issuer_identity.signing_seed).unwrap();
         assert!(token.signature.is_some());
 
@@ -531,10 +535,16 @@ mod tests {
             action: "read".to_string(),
         };
 
-        let proof = generate_hashed_proof(&token, &target_cap, &agent_identity.signing_seed).unwrap();
+        let proof =
+            generate_hashed_proof(&token, &target_cap, &agent_identity.signing_seed).unwrap();
         assert_eq!(proof.expiry, 2000);
 
-        let verified = verify_hashed_proof(&proof, &user_identity.public_key, &agent_identity.public_key).unwrap();
+        let verified = verify_hashed_proof(
+            &proof,
+            &user_identity.public_key,
+            &agent_identity.public_key,
+        )
+        .unwrap();
         assert!(verified);
     }
 
@@ -572,40 +582,42 @@ mod tests {
         use crate::did::create_did_twin;
         let agent = create_did_twin();
 
-        let cap_a = Capability { resource: "calendar".to_string(), action: "read".to_string() };
-        let cap_b = Capability { resource: "email".to_string(), action: "send".to_string() };
+        let cap_a = Capability {
+            resource: "calendar".to_string(),
+            action: "read".to_string(),
+        };
+        let cap_b = Capability {
+            resource: "email".to_string(),
+            action: "send".to_string(),
+        };
 
         let passport_1 = VirtualPassport {
             agent_did: agent.did.clone(),
             agent_public_key: agent.public_key.to_vec(),
-            active_delegations: vec![
-                UcanToken {
-                    issuer: "did:twin:zUser1".to_string(),
-                    audience: agent.did.clone(),
-                    capabilities: vec![cap_a.clone(), cap_b.clone()],
-                    expiry: 9999,
-                    proof_chain: vec![],
-                    token_id: "ucan-1".to_string(),
-                    signature: None,
-                },
-            ],
+            active_delegations: vec![UcanToken {
+                issuer: "did:twin:zUser1".to_string(),
+                audience: agent.did.clone(),
+                capabilities: vec![cap_a.clone(), cap_b.clone()],
+                expiry: 9999,
+                proof_chain: vec![],
+                token_id: "ucan-1".to_string(),
+                signature: None,
+            }],
         };
 
         // Same caps in reversed order → same hash
         let passport_2 = VirtualPassport {
             agent_did: agent.did.clone(),
             agent_public_key: agent.public_key.to_vec(),
-            active_delegations: vec![
-                UcanToken {
-                    issuer: "did:twin:zUser1".to_string(),
-                    audience: agent.did.clone(),
-                    capabilities: vec![cap_b.clone(), cap_a.clone()],
-                    expiry: 9999,
-                    proof_chain: vec![],
-                    token_id: "ucan-2".to_string(),
-                    signature: None,
-                },
-            ],
+            active_delegations: vec![UcanToken {
+                issuer: "did:twin:zUser1".to_string(),
+                audience: agent.did.clone(),
+                capabilities: vec![cap_b.clone(), cap_a.clone()],
+                expiry: 9999,
+                proof_chain: vec![],
+                token_id: "ucan-2".to_string(),
+                signature: None,
+            }],
         };
 
         let hash_1 = compute_passport_hash(&passport_1);
@@ -621,6 +633,9 @@ mod tests {
             active_delegations: passport_1.active_delegations.clone(),
         };
         let hash_3 = compute_passport_hash(&passport_3);
-        assert_ne!(hash_1, hash_3, "Different agent DID must produce different hash");
+        assert_ne!(
+            hash_1, hash_3,
+            "Different agent DID must produce different hash"
+        );
     }
 }

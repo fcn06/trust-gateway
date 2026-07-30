@@ -1,11 +1,11 @@
 //! Axum HTTP handlers for the Tenant Registry API.
 
-use std::sync::Arc;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     Json,
 };
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::models::*;
@@ -22,8 +22,8 @@ pub async fn create_tenant(
     let tier = req.tier.unwrap_or_default();
     let key_mode = req.key_mode.unwrap_or_default();
     let llm_policy = LlmPolicy::default_for_tier(&tier);
-    let vault_namespace = format!("tenant_{}", tenant_id);
-    let nats_account_id = format!("nats_account_{}", tenant_id);
+    let vault_namespace = format!("tenant_{tenant_id}");
+    let nats_account_id = format!("nats_account_{tenant_id}");
 
     let tenant = Tenant {
         tenant_id,
@@ -35,7 +35,7 @@ pub async fn create_tenant(
         vault_namespace: vault_namespace.clone(),
         llm_policy_id: llm_policy.policy_id.clone(),
         key_mode,
-        service_did: Some(format!("did:twin:tenant:{}", tenant_id)),
+        service_did: Some(format!("did:twin:tenant:{tenant_id}")),
     };
 
     // 1. Provision NATS KV namespaces
@@ -44,7 +44,7 @@ pub async fn create_tenant(
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Provisioning failed: {}", e),
+                format!("Provisioning failed: {e}"),
             )
         })?;
 
@@ -62,7 +62,7 @@ pub async fn create_tenant(
     state.store.put(&tenant).await.map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Store error: {}", e),
+            format!("Store error: {e}"),
         )
     })?;
 
@@ -219,7 +219,7 @@ pub async fn get_tenant_policy(
 
 /// Generate a composite key for tenant connections: `tenant_id_pairwise_did`
 fn connection_key(tenant_id: &str, pairwise_did: &str) -> String {
-    format!("{}_{}", tenant_id, pairwise_did)
+    format!("{tenant_id}_{pairwise_did}")
 }
 
 /// GET /tenants/:id/connections — List all wallet connections for a tenant.
@@ -228,7 +228,13 @@ pub async fn list_connections(
     Path(tenant_id): Path<String>,
 ) -> Result<Json<Vec<ConnectionSummary>>, StatusCode> {
     // Basic validation that tenant exists
-    if state.store.get(&tenant_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.is_none() {
+    if state
+        .store
+        .get(&tenant_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .is_none()
+    {
         return Err(StatusCode::NOT_FOUND);
     }
 
@@ -238,8 +244,8 @@ pub async fn list_connections(
     // For simplicity in this iteration, we grab all keys and filter.
     if let Ok(mut keys) = state.connections_kv.keys().await {
         use futures::StreamExt;
-        let prefix = format!("{}_", tenant_id);
-        
+        let prefix = format!("{tenant_id}_");
+
         while let Some(Ok(key)) = keys.next().await {
             if key.starts_with(&prefix) {
                 if let Ok(Some(entry)) = state.connections_kv.get(&key).await {
@@ -265,7 +271,13 @@ pub async fn create_connection(
     Json(req): Json<CreateConnectionRequest>,
 ) -> Result<(StatusCode, Json<ConnectionSummary>), StatusCode> {
     // Ensure tenant exists
-    if state.store.get(&tenant_id).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.is_none() {
+    if state
+        .store
+        .get(&tenant_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .is_none()
+    {
         return Err(StatusCode::NOT_FOUND);
     }
 
@@ -274,20 +286,28 @@ pub async fn create_connection(
 
     let record = ConnectionRecord {
         pairwise_did: req.pairwise_did.clone(),
-        service_did: format!("did:twin:tenant:{}", tenant_id), // Simplified service DID mapping
+        service_did: format!("did:twin:tenant:{tenant_id}"), // Simplified service DID mapping
         ucan_token: req.ucan_token,
         connected_at: now,
         status: "active".to_string(),
     };
 
     let bytes = serde_json::to_vec(&record).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    state.connections_kv.put(&key, bytes.into()).await.map_err(|e| {
-        tracing::error!("❌ Failed to store connection: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
 
-    tracing::info!("🤝 Registered connection: {} -> {}", req.pairwise_did, tenant_id);
+    state
+        .connections_kv
+        .put(&key, bytes.into())
+        .await
+        .map_err(|e| {
+            tracing::error!("❌ Failed to store connection: {}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    tracing::info!(
+        "🤝 Registered connection: {} -> {}",
+        req.pairwise_did,
+        tenant_id
+    );
 
     Ok((
         StatusCode::CREATED,
@@ -305,15 +325,26 @@ pub async fn revoke_connection(
     Path((tenant_id, pairwise_did)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let key = connection_key(&tenant_id, &pairwise_did);
-    
+
     // Check if exists first (so we can return 404)
-    if state.connections_kv.get(&key).await.ok().flatten().is_none() {
+    if state
+        .connections_kv
+        .get(&key)
+        .await
+        .ok()
+        .flatten()
+        .is_none()
+    {
         return Err(StatusCode::NOT_FOUND);
     }
 
     // Delete from KV
-    state.connections_kv.delete(&key).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
+    state
+        .connections_kv
+        .delete(&key)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     tracing::info!("❌ Revoked connection: {} -> {}", pairwise_did, tenant_id);
 
     Ok(Json(serde_json::json!({

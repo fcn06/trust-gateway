@@ -36,12 +36,7 @@ pub async fn whatsapp_webhook(
         .or_else(|| state.phone_to_tenant.get(&msg.to).cloned())
         .unwrap_or_else(|| "default".to_string());
 
-    let shadow_did = generate_shadow_did(
-        &state.gateway_seed,
-        &tenant_id,
-        &msg.from,
-        "whatsapp",
-    );
+    let shadow_did = generate_shadow_did(&state.gateway_seed, &tenant_id, &msg.from, "whatsapp");
 
     let didcomm_msg = json!({
         "id": uuid::Uuid::new_v4().to_string(),
@@ -55,20 +50,26 @@ pub async fn whatsapp_webhook(
         "created_time": chrono::Utc::now().timestamp()
     });
 
-    let subject = state.tenant_router.resolve_subject(
-        &tenant_id,
-        "gateway",
-        &shadow_did,
-    ).map_err(|e| (StatusCode::FORBIDDEN, e))?;
+    let subject = state
+        .tenant_router
+        .resolve_subject(&tenant_id, "gateway", &shadow_did)
+        .map_err(|e| (StatusCode::FORBIDDEN, e))?;
 
-    state.rate_limiter.check_tenant(&tenant_id)
+    state
+        .rate_limiter
+        .check_tenant(&tenant_id)
         .map_err(|e| (StatusCode::TOO_MANY_REQUESTS, e))?;
 
     state
         .nats
         .publish(subject, serde_json::to_vec(&didcomm_msg).unwrap().into())
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("NATS publish failed: {}", e)))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("NATS publish failed: {e}"),
+            )
+        })?;
 
     Ok(Json(json!({"status": "received"})))
 }

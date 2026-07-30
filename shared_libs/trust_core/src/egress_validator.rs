@@ -168,7 +168,7 @@ mod tests {
 
         // 58-character NKey seed starting with S and matching base32 characters
         let seed = "SUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-        let content_seed = format!("Leak seed: {}", seed);
+        let content_seed = format!("Leak seed: {seed}");
         assert_eq!(
             validate_egress(&content_seed, &EgressConfig::default()),
             Err(EgressViolation::InternalIdLeaked)

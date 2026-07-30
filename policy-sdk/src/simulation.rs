@@ -31,14 +31,17 @@ impl SimulationEngine {
         tool_name: &str,
         amount_usd: Option<u64>,
     ) -> SimulationResult {
-        let active_outcome = self.active_evaluator.evaluate(tenant_id, agent_id, tool_name, amount_usd);
-        let candidate_outcome = self.candidate_evaluator.evaluate(tenant_id, agent_id, tool_name, amount_usd);
+        let active_outcome = self
+            .active_evaluator
+            .evaluate(tenant_id, agent_id, tool_name, amount_usd);
+        let candidate_outcome = self
+            .candidate_evaluator
+            .evaluate(tenant_id, agent_id, tool_name, amount_usd);
         let is_divergent = active_outcome != candidate_outcome;
 
         let explanation = if is_divergent {
             format!(
-                "Policy Divergence Detected! Active: {:?}, Shadow Candidate: {:?}",
-                active_outcome, candidate_outcome
+                "Policy Divergence Detected! Active: {active_outcome:?}, Shadow Candidate: {candidate_outcome:?}"
             )
         } else {
             "Active and Shadow Candidate policies produced identical outcomes.".to_string()

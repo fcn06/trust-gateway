@@ -42,12 +42,7 @@ pub async fn twilio_webhook(
         .unwrap_or_else(|| "default".to_string());
 
     // Generate shadow DID
-    let shadow_did = generate_shadow_did(
-        &state.gateway_seed,
-        &tenant_id,
-        &sms.From,
-        "sms",
-    );
+    let shadow_did = generate_shadow_did(&state.gateway_seed, &tenant_id, &sms.From, "sms");
 
     // Wrap into DIDComm-like message
     let didcomm_msg = json!({
@@ -63,23 +58,31 @@ pub async fn twilio_webhook(
     });
 
     // Route via tenant NATS
-    let subject = state.tenant_router.resolve_subject(
-        &tenant_id,
-        "gateway",
-        &shadow_did,
-    ).map_err(|e| (StatusCode::FORBIDDEN, e))?;
+    let subject = state
+        .tenant_router
+        .resolve_subject(&tenant_id, "gateway", &shadow_did)
+        .map_err(|e| (StatusCode::FORBIDDEN, e))?;
 
     // Rate check
-    state.rate_limiter.check_tenant(&tenant_id)
+    state
+        .rate_limiter
+        .check_tenant(&tenant_id)
         .map_err(|e| (StatusCode::TOO_MANY_REQUESTS, e))?;
-    state.rate_limiter.check_sender(&shadow_did)
+    state
+        .rate_limiter
+        .check_sender(&shadow_did)
         .map_err(|e| (StatusCode::TOO_MANY_REQUESTS, e))?;
 
     state
         .nats
         .publish(subject, serde_json::to_vec(&didcomm_msg).unwrap().into())
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("NATS publish failed: {}", e)))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("NATS publish failed: {e}"),
+            )
+        })?;
 
     // Return TwiML empty response (acknowledge receipt)
     Ok("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>".to_string())

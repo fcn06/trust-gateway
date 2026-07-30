@@ -14,11 +14,11 @@
 // Issuer DID (Organization): did:web — HTTP fetch of did.json
 // ─────────────────────────────────────────────────────────────
 
+use crate::AuthMethod;
 use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
-use sha2::{Digest, Sha256};
 use identity_context::models::{IdentityContext, SourceContext};
-use crate::AuthMethod;
+use sha2::{Digest, Sha256};
 
 /// Result of a successfully verified Verifiable Presentation.
 #[derive(Debug, Clone)]
@@ -62,21 +62,20 @@ impl std::fmt::Display for VpError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotAVp => write!(f, "Token is not a Verifiable Presentation"),
-            Self::MalformedToken(m) => write!(f, "Malformed VP token: {}", m),
-            Self::ForbiddenDidMethod(d) => write!(f, "Agent DID method not allowed: {}", d),
-            Self::AgentKeyResolution(m) => write!(f, "Cannot resolve agent public key: {}", m),
+            Self::MalformedToken(m) => write!(f, "Malformed VP token: {m}"),
+            Self::ForbiddenDidMethod(d) => write!(f, "Agent DID method not allowed: {d}"),
+            Self::AgentKeyResolution(m) => write!(f, "Cannot resolve agent public key: {m}"),
             Self::VpSignatureInvalid => write!(f, "VP signature verification failed"),
             Self::NoCredential => write!(f, "No verifiable credential in VP"),
-            Self::IssuerNotDidWeb(d) => write!(f, "Issuer must use did:web, got: {}", d),
-            Self::IssuerResolution(m) => write!(f, "Cannot resolve issuer DID document: {}", m),
+            Self::IssuerNotDidWeb(d) => write!(f, "Issuer must use did:web, got: {d}"),
+            Self::IssuerResolution(m) => write!(f, "Cannot resolve issuer DID document: {m}"),
             Self::CredentialSignatureInvalid => {
                 write!(f, "Credential signature verification failed")
             }
             Self::BindingMismatch { expected, got } => {
                 write!(
                     f,
-                    "Binding mismatch: credentialSubject.id='{}' != agent_did='{}'",
-                    got, expected
+                    "Binding mismatch: credentialSubject.id='{got}' != agent_did='{expected}'"
                 )
             }
         }
@@ -130,9 +129,9 @@ pub async fn verify_presentation(
     // ── Decode VP payload ────────────────────────────────────
     let payload_bytes = b64
         .decode(parts[1])
-        .map_err(|e| VpError::MalformedToken(format!("payload base64: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload base64: {e}")))?;
     let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)
-        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {e}")))?;
 
     if payload.get("vp").is_none() {
         return Err(VpError::NotAVp);
@@ -189,9 +188,9 @@ pub async fn verify_presentation(
     }
     let vc_payload_bytes = b64
         .decode(vc_parts[1])
-        .map_err(|e| VpError::MalformedToken(format!("VC payload base64: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("VC payload base64: {e}")))?;
     let vc_payload: serde_json::Value = serde_json::from_slice(&vc_payload_bytes)
-        .map_err(|e| VpError::MalformedToken(format!("VC payload JSON: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("VC payload JSON: {e}")))?;
 
     // ── Step 4.2: Extract issuer DID ─────────────────────────
     let issuer_did = vc_payload
@@ -273,9 +272,9 @@ pub fn verify_eddsa_session_jwt(token: &str) -> Result<identity_context::jwt::Jw
     let payload_bytes = b64
         .decode(parts[1])
         .or_else(|_| b64_pad.decode(parts[1]))
-        .map_err(|e| VpError::MalformedToken(format!("payload base64: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload base64: {e}")))?;
     let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)
-        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {e}")))?;
 
     let iss = payload
         .get("iss")
@@ -295,7 +294,7 @@ pub fn verify_eddsa_session_jwt(token: &str) -> Result<identity_context::jwt::Jw
         .map_err(|_| VpError::VpSignatureInvalid)?;
 
     let claims: identity_context::jwt::JwtClaims = serde_json::from_value(payload)
-        .map_err(|e| VpError::MalformedToken(format!("claims structure: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("claims structure: {e}")))?;
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -330,20 +329,22 @@ pub async fn verify_oauth2_eddsa_jwt(
     let header_bytes = b64
         .decode(parts[0])
         .or_else(|_| b64_pad.decode(parts[0]))
-        .map_err(|e| VpError::MalformedToken(format!("header base64: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("header base64: {e}")))?;
     let header: serde_json::Value = serde_json::from_slice(&header_bytes)
-        .map_err(|e| VpError::MalformedToken(format!("header JSON: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("header JSON: {e}")))?;
 
     let payload_bytes = b64
         .decode(parts[1])
         .or_else(|_| b64_pad.decode(parts[1]))
-        .map_err(|e| VpError::MalformedToken(format!("payload base64: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload base64: {e}")))?;
     let payload: serde_json::Value = serde_json::from_slice(&payload_bytes)
-        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {}", e)))?;
+        .map_err(|e| VpError::MalformedToken(format!("payload JSON: {e}")))?;
 
     let alg = header.get("alg").and_then(|v| v.as_str()).unwrap_or("");
     if alg != "EdDSA" {
-        return Err(VpError::MalformedToken(format!("Unsupported algorithm '{}', expected 'EdDSA'", alg)));
+        return Err(VpError::MalformedToken(format!(
+            "Unsupported algorithm '{alg}', expected 'EdDSA'"
+        )));
     }
 
     let now = std::time::SystemTime::now()
@@ -372,28 +373,31 @@ pub async fn verify_oauth2_eddsa_jwt(
         "http://127.0.0.1:3075/.well-known/jwks.json".to_string()
     };
 
-    let jwks_res = client
-        .get(&target_jwks_url)
-        .send()
-        .await
-        .map_err(|e| VpError::IssuerResolution(format!("Failed to fetch JWKS from {}: {}", target_jwks_url, e)))?;
-    let jwks: serde_json::Value = jwks_res
-        .json()
-        .await
-        .map_err(|e| VpError::IssuerResolution(format!("Failed to parse JWKS JSON from {}: {}", target_jwks_url, e)))?;
+    let jwks_res = client.get(&target_jwks_url).send().await.map_err(|e| {
+        VpError::IssuerResolution(format!(
+            "Failed to fetch JWKS from {target_jwks_url}: {e}"
+        ))
+    })?;
+    let jwks: serde_json::Value = jwks_res.json().await.map_err(|e| {
+        VpError::IssuerResolution(format!(
+            "Failed to parse JWKS JSON from {target_jwks_url}: {e}"
+        ))
+    })?;
 
-    let keys = jwks
-        .get("keys")
-        .and_then(|k| k.as_array())
-        .ok_or_else(|| VpError::IssuerResolution(format!("Invalid JWKS structure at {}", target_jwks_url)))?;
+    let keys = jwks.get("keys").and_then(|k| k.as_array()).ok_or_else(|| {
+        VpError::IssuerResolution(format!("Invalid JWKS structure at {target_jwks_url}"))
+    })?;
 
     let target_kid = header.get("kid").and_then(|k| k.as_str());
     let key_entry = if let Some(kid) = target_kid {
         keys.iter()
             .find(|k| k.get("kid").and_then(|id| id.as_str()) == Some(kid))
-            .ok_or_else(|| VpError::IssuerResolution(format!("Key ID '{}' not found in JWKS", kid)))?
+            .ok_or_else(|| {
+                VpError::IssuerResolution(format!("Key ID '{kid}' not found in JWKS"))
+            })?
     } else {
-        keys.first().ok_or_else(|| VpError::IssuerResolution("JWKS contains no keys".into()))?
+        keys.first()
+            .ok_or_else(|| VpError::IssuerResolution("JWKS contains no keys".into()))?
     };
 
     let x_str = key_entry
@@ -404,7 +408,7 @@ pub async fn verify_oauth2_eddsa_jwt(
     let pub_key_bytes = b64
         .decode(x_str)
         .or_else(|_| b64_pad.decode(x_str))
-        .map_err(|e| VpError::IssuerResolution(format!("Failed to decode JWK x field: {}", e)))?;
+        .map_err(|e| VpError::IssuerResolution(format!("Failed to decode JWK x field: {e}")))?;
     let pub_key_arr: [u8; 32] = pub_key_bytes
         .try_into()
         .map_err(|_| VpError::IssuerResolution("Invalid public key length in JWK".into()))?;
@@ -423,7 +427,10 @@ pub async fn verify_oauth2_eddsa_jwt(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string())
         .unwrap_or_else(|| {
-            let sub = payload.get("sub").and_then(|v| v.as_str()).unwrap_or("unknown");
+            let sub = payload
+                .get("sub")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
             format!("tenant_{}", sub.replace(':', "_"))
         });
 
@@ -434,9 +441,10 @@ pub async fn verify_oauth2_eddsa_jwt(
         .to_string();
 
     let oauth_scopes = match payload.get("scope") {
-        Some(serde_json::Value::Array(arr)) => {
-            arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()
-        }
+        Some(serde_json::Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect(),
         Some(serde_json::Value::String(s)) => {
             s.split_whitespace().map(|item| item.to_string()).collect()
         }
@@ -482,17 +490,16 @@ fn resolve_did_jwk(did: &str) -> Result<[u8; 32], VpError> {
 
     let jwk_bytes = b64
         .decode(jwk_b64)
-        .map_err(|e| VpError::AgentKeyResolution(format!("did:jwk base64 decode: {}", e)))?;
+        .map_err(|e| VpError::AgentKeyResolution(format!("did:jwk base64 decode: {e}")))?;
     let jwk: serde_json::Value = serde_json::from_slice(&jwk_bytes)
-        .map_err(|e| VpError::AgentKeyResolution(format!("did:jwk JSON parse: {}", e)))?;
+        .map_err(|e| VpError::AgentKeyResolution(format!("did:jwk JSON parse: {e}")))?;
 
     // Validate key type: OKP + Ed25519
     let kty = jwk.get("kty").and_then(|v| v.as_str()).unwrap_or("");
     let crv = jwk.get("crv").and_then(|v| v.as_str()).unwrap_or("");
     if kty != "OKP" || crv != "Ed25519" {
         return Err(VpError::AgentKeyResolution(format!(
-            "Unsupported JWK: kty={}, crv={} (expected OKP/Ed25519)",
-            kty, crv
+            "Unsupported JWK: kty={kty}, crv={crv} (expected OKP/Ed25519)"
         )));
     }
 
@@ -502,7 +509,7 @@ fn resolve_did_jwk(did: &str) -> Result<[u8; 32], VpError> {
         .ok_or_else(|| VpError::AgentKeyResolution("Missing 'x' in JWK".into()))?;
     let x_bytes = b64
         .decode(x_b64)
-        .map_err(|e| VpError::AgentKeyResolution(format!("JWK x decode: {}", e)))?;
+        .map_err(|e| VpError::AgentKeyResolution(format!("JWK x decode: {e}")))?;
 
     x_bytes
         .try_into()
@@ -512,7 +519,7 @@ fn resolve_did_jwk(did: &str) -> Result<[u8; 32], VpError> {
 /// Resolve Ed25519 public key from `did:twin:z<hex>`.
 fn resolve_did_twin(did: &str) -> Result<[u8; 32], VpError> {
     ssi_crypto::did::parse_did_twin_pubkey(did)
-        .ok_or_else(|| VpError::AgentKeyResolution(format!("Invalid did:twin format: {}", did)))
+        .ok_or_else(|| VpError::AgentKeyResolution(format!("Invalid did:twin format: {did}")))
 }
 
 /// Resolve Ed25519 public key from `did:key:z<multibase>`.
@@ -526,7 +533,7 @@ fn resolve_did_key(did: &str) -> Result<[u8; 32], VpError> {
 
     let decoded = bs58::decode(key_part)
         .into_vec()
-        .map_err(|e| VpError::AgentKeyResolution(format!("did:key base58 decode: {}", e)))?;
+        .map_err(|e| VpError::AgentKeyResolution(format!("did:key base58 decode: {e}")))?;
 
     // Ed25519 multicodec varint prefix: 0xed 0x01
     if decoded.len() < 34 || decoded[0] != 0xed || decoded[1] != 0x01 {
@@ -547,18 +554,18 @@ fn make_nats_key(did: &str) -> String {
 fn is_private_ip(ip: std::net::IpAddr) -> bool {
     match ip {
         std::net::IpAddr::V4(ip) => {
-            ip.is_loopback() 
-                || ip.is_private() 
-                || ip.is_link_local() 
-                || ip.is_unspecified() 
+            ip.is_loopback()
+                || ip.is_private()
+                || ip.is_link_local()
+                || ip.is_unspecified()
                 || ip.is_broadcast()
         }
         std::net::IpAddr::V6(ip) => {
             if let Some(ipv4) = ip.to_ipv4_mapped() {
                 is_private_ip(std::net::IpAddr::V4(ipv4))
             } else {
-                ip.is_loopback() 
-                    || ip.is_unspecified() 
+                ip.is_loopback()
+                    || ip.is_unspecified()
                     || (ip.segments()[0] & 0xfe00) == 0xfc00 // Unique Local Address
                     || (ip.segments()[0] & 0xffc0) == 0xfe80 // Link-Local Unicast
                     || (ip.segments()[0] & 0xff00) == 0xff00 // Multicast
@@ -596,37 +603,41 @@ async fn resolve_did_web(
         let segments: Vec<&str> = domain_part.split(':').collect();
         let domain = segments[0];
         let path = segments[1..].join("/");
-        format!("https://{}/{}/did.json", domain, path)
+        format!("https://{domain}/{path}/did.json")
     } else {
-        format!("https://{}/.well-known/did.json", domain_part)
+        format!("https://{domain_part}/.well-known/did.json")
     };
 
     let parsed_url = reqwest::Url::parse(&url)
-        .map_err(|e| VpError::IssuerResolution(format!("Malformed URL: {}", e)))?;
+        .map_err(|e| VpError::IssuerResolution(format!("Malformed URL: {e}")))?;
 
-    let host = parsed_url.host_str()
+    let host = parsed_url
+        .host_str()
         .ok_or_else(|| VpError::IssuerResolution("Missing host in URL".into()))?;
 
     let host_lower = host.to_lowercase();
     if host_lower == "localhost" || host_lower.ends_with(".local") {
-        return Err(VpError::IssuerResolution("SSRF block: Local hostname not allowed".into()));
+        return Err(VpError::IssuerResolution(
+            "SSRF block: Local hostname not allowed".into(),
+        ));
     }
 
     let port = parsed_url.port().unwrap_or(443);
-    let resolve_target = format!("{}:{}", host, port);
+    let resolve_target = format!("{host}:{port}");
 
     // Resolve domain/host asynchronously to get all IP addresses
     let addrs = tokio::net::lookup_host(&resolve_target)
         .await
-        .map_err(|e| VpError::IssuerResolution(format!("Failed to resolve host '{}': {}", host, e)))?;
+        .map_err(|e| {
+            VpError::IssuerResolution(format!("Failed to resolve host '{host}': {e}"))
+        })?;
 
     let mut validated_ip = None;
     for addr in addrs {
         let ip = addr.ip();
         if is_private_ip(ip) {
             return Err(VpError::IssuerResolution(format!(
-                "SSRF block: Access to private or loopback IP address '{}' is forbidden",
-                ip
+                "SSRF block: Access to private or loopback IP address '{ip}' is forbidden"
             )));
         }
         if validated_ip.is_none() {
@@ -634,7 +645,8 @@ async fn resolve_did_web(
         }
     }
 
-    let ip = validated_ip.ok_or_else(|| VpError::IssuerResolution("No IP addresses resolved".into()))?;
+    let ip =
+        validated_ip.ok_or_else(|| VpError::IssuerResolution("No IP addresses resolved".into()))?;
 
     tracing::info!("🌐 Resolving issuer DID document: {} → {}", did, url);
 
@@ -644,13 +656,15 @@ async fn resolve_did_web(
         .timeout(std::time::Duration::from_secs(10))
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .map_err(|e| VpError::IssuerResolution(format!("Failed to build secure HTTP client: {}", e)))?;
+        .map_err(|e| {
+            VpError::IssuerResolution(format!("Failed to build secure HTTP client: {e}"))
+        })?;
 
     let resp = custom_client
         .get(&url)
         .send()
         .await
-        .map_err(|e| VpError::IssuerResolution(format!("HTTP fetch failed: {}", e)))?;
+        .map_err(|e| VpError::IssuerResolution(format!("HTTP fetch failed: {e}")))?;
 
     if !resp.status().is_success() {
         return Err(VpError::IssuerResolution(format!(
@@ -662,7 +676,7 @@ async fn resolve_did_web(
     let did_doc: serde_json::Value = resp
         .json()
         .await
-        .map_err(|e| VpError::IssuerResolution(format!("DID document parse failed: {}", e)))?;
+        .map_err(|e| VpError::IssuerResolution(format!("DID document parse failed: {e}")))?;
 
     // Extract public key from first verificationMethod
     let pubkey = extract_pubkey_from_did_document(&did_doc)?;
@@ -699,7 +713,7 @@ fn extract_pubkey_from_did_document(doc: &serde_json::Value) -> Result<[u8; 32],
                 if let Some(x) = jwk.get("x").and_then(|v| v.as_str()) {
                     let bytes = b64
                         .decode(x)
-                        .map_err(|e| VpError::IssuerResolution(format!("JWK x decode: {}", e)))?;
+                        .map_err(|e| VpError::IssuerResolution(format!("JWK x decode: {e}")))?;
                     return bytes
                         .try_into()
                         .map_err(|_| VpError::IssuerResolution("Key must be 32 bytes".into()));
@@ -710,7 +724,7 @@ fn extract_pubkey_from_did_document(doc: &serde_json::Value) -> Result<[u8; 32],
         // Try publicKeyHex (Ed25519VerificationKey2020)
         if let Some(hex_key) = method.get("publicKeyHex").and_then(|v| v.as_str()) {
             let bytes = hex::decode(hex_key)
-                .map_err(|e| VpError::IssuerResolution(format!("publicKeyHex: {}", e)))?;
+                .map_err(|e| VpError::IssuerResolution(format!("publicKeyHex: {e}")))?;
             if bytes.len() == 32 {
                 return bytes
                     .try_into()
@@ -756,10 +770,10 @@ fn verify_ed25519_signature(
         .try_into()
         .map_err(|_| "Signature must be 64 bytes".to_string())?;
     let vk =
-        VerifyingKey::from_bytes(public_key).map_err(|e| format!("Invalid public key: {}", e))?;
+        VerifyingKey::from_bytes(public_key).map_err(|e| format!("Invalid public key: {e}"))?;
     let sig = Signature::from_bytes(&sig_arr);
     vk.verify(message, &sig)
-        .map_err(|e| format!("Signature verification failed: {}", e))
+        .map_err(|e| format!("Signature verification failed: {e}"))
 }
 
 /// Derive a deterministic tenant_id from an issuer DID via SHA256.
@@ -807,7 +821,7 @@ mod tests {
             }))
             .unwrap(),
         );
-        let token = format!("{}.{}.fake_sig", header, payload);
+        let token = format!("{header}.{payload}.fake_sig");
         assert!(is_verifiable_presentation(&token));
     }
 
@@ -821,7 +835,7 @@ mod tests {
             }))
             .unwrap(),
         );
-        let token = format!("{}.{}.fake_sig", header, payload);
+        let token = format!("{header}.{payload}.fake_sig");
         assert!(!is_verifiable_presentation(&token));
     }
 
@@ -847,7 +861,7 @@ mod tests {
         let mut mc_bytes = vec![0xed, 0x01];
         mc_bytes.extend_from_slice(&vk.to_bytes());
         let encoded = bs58::encode(&mc_bytes).into_string();
-        let did = format!("did:key:z{}", encoded);
+        let did = format!("did:key:z{encoded}");
         let resolved = resolve_did_key(&did).unwrap();
         assert_eq!(resolved, vk.to_bytes());
     }
@@ -873,13 +887,16 @@ mod tests {
     #[test]
     fn test_make_nats_key() {
         assert_eq!(make_nats_key("did:web:example.com"), "did_web_example.com");
-        assert_eq!(make_nats_key("did:web:example.com:path:to:did.json"), "did_web_example.com_path_to_did.json");
+        assert_eq!(
+            make_nats_key("did:web:example.com:path:to:did.json"),
+            "did_web_example.com_path_to_did.json"
+        );
     }
 
     #[tokio::test]
     async fn test_resolve_did_web_ssrf_block() {
         let client = reqwest::Client::new();
-        
+
         let result_local = resolve_did_web("did:web:localhost", &client, None).await;
         assert!(result_local.is_err());
         if let Err(VpError::IssuerResolution(msg)) = result_local {
@@ -911,7 +928,7 @@ mod tests {
         let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
         let header = b64.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
         let payload = b64.encode(b"{\"iss\":\"http://127.0.0.1:3075\",\"sub\":\"company-beta\"}");
-        let token = format!("{}.{}.fake_sig", header, payload);
+        let token = format!("{header}.{payload}.fake_sig");
 
         let res = verify_oauth2_eddsa_jwt(&token, &client, None).await;
         assert!(res.is_err());

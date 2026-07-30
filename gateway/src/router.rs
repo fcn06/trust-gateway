@@ -9,9 +9,8 @@
 // All dispatch calls are wrapped in retry logic for resilience.
 // ─────────────────────────────────────────────────────────────
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use futures::StreamExt;
-use rmcp::model::CallToolRequestParams;
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 use trust_core::action::{ActionRequest, ActionResult, ActionStatus};
@@ -231,11 +230,7 @@ impl ToolRegistry {
     }
 
     /// Force an immediate registry refresh regardless of TTL (WS1.5).
-    pub async fn force_refresh(
-        &self,
-        client: &reqwest::Client,
-        host_url: &str,
-    ) {
+    pub async fn force_refresh(&self, client: &reqwest::Client, host_url: &str) {
         // Reset last_refresh to force the stale check to pass
         *self.last_refresh.write().await = None;
         self.refresh_if_stale(client, host_url).await;
@@ -243,11 +238,7 @@ impl ToolRegistry {
 
     /// Refresh the registry from the Host's /.well-known/skills.json
     /// and built-in tool descriptors if the cache has expired.
-    pub async fn refresh_if_stale(
-        &self,
-        client: &reqwest::Client,
-        host_url: &str,
-    ) {
+    pub async fn refresh_if_stale(&self, client: &reqwest::Client, host_url: &str) {
         // Check if refresh is needed (fast path)
         {
             let last = self.last_refresh.read().await;
@@ -275,7 +266,7 @@ impl ToolRegistry {
 
         // 1. Discovery from Host's skills.json (Static)
         // We still fetch from the Host because it may define dynamic local skills
-        let url = format!("{}/.well-known/skills.json", host_url);
+        let url = format!("{host_url}/.well-known/skills.json");
         let mut host_failed = false;
         let skills = match client.get(&url).send().await {
             Ok(resp) if resp.status().is_success() => {
@@ -294,9 +285,19 @@ impl ToolRegistry {
                         name.to_string(),
                         ToolRegistryEntry {
                             executor_type: "mcp".to_string(),
-                            category: tool.get("category").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                            description: tool.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                            input_schema: tool.get("inputSchema").cloned().unwrap_or(serde_json::json!({})),
+                            category: tool
+                                .get("category")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
+                            description: tool
+                                .get("description")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            input_schema: tool
+                                .get("inputSchema")
+                                .cloned()
+                                .unwrap_or(serde_json::json!({})),
                             cron: None,
                             app_id: None,
                         },
@@ -308,7 +309,8 @@ impl ToolRegistry {
         if let Some(claw_skills) = skills.get("claw_skills").and_then(|v| v.as_array()) {
             for skill in claw_skills {
                 if let Some(name) = skill.get("name").and_then(|v| v.as_str()) {
-                    let executor_type = skill.get("executor_type")
+                    let executor_type = skill
+                        .get("executor_type")
                         .and_then(|v| v.as_str())
                         .unwrap_or("claw")
                         .to_string();
@@ -316,10 +318,23 @@ impl ToolRegistry {
                         name.to_string(),
                         ToolRegistryEntry {
                             executor_type,
-                            category: skill.get("category").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                            description: skill.get("description").and_then(|v| v.as_str()).unwrap_or("").to_string(),
-                            input_schema: skill.get("input_schema").cloned().unwrap_or(serde_json::json!({})),
-                            cron: skill.get("cron").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                            category: skill
+                                .get("category")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
+                            description: skill
+                                .get("description")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),
+                            input_schema: skill
+                                .get("input_schema")
+                                .cloned()
+                                .unwrap_or(serde_json::json!({})),
+                            cron: skill
+                                .get("cron")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string()),
                             app_id: None,
                         },
                     );
@@ -344,11 +359,15 @@ impl ToolRegistry {
                 trust_core::tool_registry::ExecutorProfile::Connector => "connector".to_string(),
                 trust_core::tool_registry::ExecutorProfile::Vp => "vp".to_string(),
                 trust_core::tool_registry::ExecutorProfile::NativeTool => "native-tool".to_string(),
-                trust_core::tool_registry::ExecutorProfile::SandboxedTool => "sandboxed-tool".to_string(),
-                trust_core::tool_registry::ExecutorProfile::SandboxedSkill => "sandboxed-skill".to_string(),
+                trust_core::tool_registry::ExecutorProfile::SandboxedTool => {
+                    "sandboxed-tool".to_string()
+                }
+                trust_core::tool_registry::ExecutorProfile::SandboxedSkill => {
+                    "sandboxed-skill".to_string()
+                }
                 trust_core::tool_registry::ExecutorProfile::Dynamic => "mcp".to_string(),
             };
-            
+
             let category = desc.bundle_membership.first().cloned();
             let existing_cron = new_entries.get(&desc.mcp_name).and_then(|e| e.cron.clone());
 
@@ -357,7 +376,11 @@ impl ToolRegistry {
                 ToolRegistryEntry {
                     executor_type,
                     category,
-                    description: if desc.description.is_empty() { desc.display_name.clone() } else { desc.description.clone() },
+                    description: if desc.description.is_empty() {
+                        desc.display_name.clone()
+                    } else {
+                        desc.description.clone()
+                    },
                     input_schema: desc.input_schema.clone(),
                     cron: desc.cron.clone().or(existing_cron),
                     app_id: None,
@@ -366,15 +389,19 @@ impl ToolRegistry {
         }
 
         let count = new_entries.len();
-        
+
         // Phase 10: Strict meta-tool exclusion.
         // We no longer filter these out because we want them to be categorized into bundles
         // (like the 'core' bundle) for list_bundles and switch_context.
-        
+
         let final_count = new_entries.len();
         *self.entries.write().await = new_entries;
         *self.last_refresh.write().await = Some(std::time::Instant::now());
-        tracing::info!("📋 Tool registry refreshed: {} entries cached ({} meta-tools filtered)", final_count, count - final_count);
+        tracing::info!(
+            "📋 Tool registry refreshed: {} entries cached ({} meta-tools filtered)",
+            final_count,
+            count - final_count
+        );
     }
 
     // ─── Smart Filtering Methods ────────────────────────────
@@ -453,28 +480,23 @@ impl ToolRegistry {
     ///
     /// These tools are added to the in-memory cache without waiting for
     /// the next TTL-driven refresh cycle.
-    pub async fn register_dynamic_tools(
-        &self,
-        tools: Vec<(String, ToolRegistryEntry)>,
-    ) {
+    pub async fn register_dynamic_tools(&self, tools: Vec<(String, ToolRegistryEntry)>) {
         let mut entries = self.entries.write().await;
         let count = tools.len();
         for (name, entry) in tools {
             entries.insert(name, entry);
         }
-        tracing::info!("📋 Dynamically registered {} tools into ToolRegistry", count);
+        tracing::info!(
+            "📋 Dynamically registered {} tools into ToolRegistry",
+            count
+        );
     }
 
     /// Remove dynamically registered tools by app_id.
-    pub async fn unregister_dynamic_tools(
-        &self,
-        app_id: &str,
-    ) {
+    pub async fn unregister_dynamic_tools(&self, app_id: &str) {
         let mut entries = self.entries.write().await;
         let before = entries.len();
-        entries.retain(|_, v| {
-            v.app_id.as_deref() != Some(app_id)
-        });
+        entries.retain(|_, v| v.app_id.as_deref() != Some(app_id));
         let removed = before - entries.len();
         if removed > 0 {
             tracing::info!("📋 Unregistered {} tools for app '{}'", removed, app_id);
@@ -489,10 +511,13 @@ pub async fn discover_mcp_tools(
 ) -> Result<Vec<rmcp::model::Tool>> {
     let mut sse_uri = uri.trim_end_matches('/').to_string();
     if !sse_uri.ends_with("/sse") {
-        sse_uri = format!("{}/sse", sse_uri);
+        sse_uri = format!("{sse_uri}/sse");
     }
 
-    let config = rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(sse_uri);
+    let config =
+        rmcp::transport::streamable_http_client::StreamableHttpClientTransportConfig::with_uri(
+            sse_uri,
+        );
     let transport = rmcp::transport::StreamableHttpClientTransport::with_client(client, config);
 
     let client_info = rmcp::model::InitializeRequestParams::new(
@@ -502,10 +527,10 @@ pub async fn discover_mcp_tools(
 
     let running = rmcp::serve_client(client_info, transport)
         .await
-        .map_err(|e| anyhow::anyhow!("VP Discovery handshake failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("VP Discovery handshake failed: {e}"))?;
 
     let mcp_client = running.clone();
-    
+
     // Drive the transport in a background task, but ensure it is cleaned up.
     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     let handle = tokio::spawn(async move {
@@ -514,7 +539,7 @@ pub async fn discover_mcp_tools(
     });
 
     let result = mcp_client.list_tools(Default::default()).await;
-    
+
     // Explicitly shut down the background task after discovery.
     let _ = tx.send(());
     handle.abort();
@@ -528,9 +553,7 @@ pub async fn discover_mcp_tools(
 /// Determine which executor backend should handle a given tool.
 async fn determine_executor_target(state: &GatewayState, tool_name: &str) -> ExecutorTarget {
     // Phase 0: Gateway-Internal Meta Tools (PRIORITY)
-    if tool_name == "search_skills"
-        || tool_name == "switch_context"
-        || tool_name == "list_bundles"
+    if tool_name == "search_skills" || tool_name == "switch_context" || tool_name == "list_bundles"
     {
         return ExecutorTarget::InternalMeta;
     }
@@ -538,20 +561,13 @@ async fn determine_executor_target(state: &GatewayState, tool_name: &str) -> Exe
     // Phase 1: Registry-first lookup
     if let Some(ref registry) = state.tool_registry {
         registry
-            .refresh_if_stale(
-                &state.http_client,
-                &state.connectors.host_url,
-            )
+            .refresh_if_stale(&state.http_client, &state.connectors.host_url)
             .await;
 
         if let Some(entry) = registry.lookup(tool_name).await {
             // Check if this is a dynamically registered tool with an app_id.
             if let Some(ref app_id) = entry.app_id {
-                tracing::info!(
-                    "📋 Dynamic routing: '{}' → app='{}'",
-                    tool_name,
-                    app_id
-                );
+                tracing::info!("📋 Dynamic routing: '{}' → app='{}'", tool_name, app_id);
                 return ExecutorTarget::DynamicTransport(app_id.clone());
             }
 
@@ -561,7 +577,9 @@ async fn determine_executor_target(state: &GatewayState, tool_name: &str) -> Exe
                 entry.executor_type
             );
             return match entry.executor_type.as_str() {
-                "claw" | "native_tool" | "native-tool" | "native_skill" | "native-skill" => ExecutorTarget::ClawExecutor,
+                "claw" | "native_tool" | "native-tool" | "native_skill" | "native-skill" => {
+                    ExecutorTarget::ClawExecutor
+                }
                 "sandboxed-skill" | "sandboxed_skill" => ExecutorTarget::SandboxedSkill,
                 "vp" | "vp_mcp" => ExecutorTarget::VpMcp,
                 _ => ExecutorTarget::ConnectorMcp,
@@ -582,7 +600,10 @@ async fn determine_executor_target(state: &GatewayState, tool_name: &str) -> Exe
     }
 
     // Phase 2: Resilience / Prefixes (Fallback)
-    if tool_name.starts_with("claw_") || tool_name.starts_with("tool_") || tool_name.starts_with("skill_") {
+    if tool_name.starts_with("claw_")
+        || tool_name.starts_with("tool_")
+        || tool_name.starts_with("skill_")
+    {
         return ExecutorTarget::ClawExecutor;
     }
     if tool_name.starts_with("vp_") || tool_name == "discover_agent_services" {
@@ -677,12 +698,20 @@ async fn dispatch_with_retry(
 
     for attempt in 0..=max_retries {
         let result = match &target {
-            ExecutorTarget::ConnectorMcp => dispatch_to_nats_executor(state, req, grant, "connector").await,
-            ExecutorTarget::ClawExecutor => dispatch_to_nats_executor(state, req, grant, "native-tool").await,
-            ExecutorTarget::SandboxedSkill => dispatch_to_nats_executor(state, req, grant, "sandboxed-skill").await,
+            ExecutorTarget::ConnectorMcp => {
+                dispatch_to_nats_executor(state, req, grant, "connector").await
+            }
+            ExecutorTarget::ClawExecutor => {
+                dispatch_to_nats_executor(state, req, grant, "native-tool").await
+            }
+            ExecutorTarget::SandboxedSkill => {
+                dispatch_to_nats_executor(state, req, grant, "sandboxed-skill").await
+            }
             ExecutorTarget::VpMcp => dispatch_to_nats_executor(state, req, grant, "vp").await,
             ExecutorTarget::InternalMeta => dispatch_internal_meta(state, req).await,
-            ExecutorTarget::DynamicTransport(app_id) => dispatch_to_dynamic_transport(state, req, grant, app_id).await,
+            ExecutorTarget::DynamicTransport(app_id) => {
+                dispatch_to_dynamic_transport(state, req, grant, app_id).await
+            }
         };
 
         match result {
@@ -770,32 +799,48 @@ async fn dispatch_to_nats_executor(
 
     // P2: Wrap in canonical TrustEnvelope — trace_id, auth_context, and
     // policy_fingerprint now flow end-to-end through the NATS boundary.
-    let envelope = trust_core::envelope::TrustEnvelope::new(
-        &req.tenant_id,
-        &req.action_id,
-        granted_action,
-    )
-    .with_auth_context(&req.actor.requester_did)
-    .with_policy_fingerprint(state.policy_fingerprint.clone());
+    let envelope =
+        trust_core::envelope::TrustEnvelope::new(&req.tenant_id, &req.action_id, granted_action)
+            .with_auth_context(&req.actor.requester_did)
+            .with_policy_fingerprint(state.policy_fingerprint.clone());
 
     let publish_subject = format!("exec.v1.{}.{}.invoke", req.tenant_id, profile);
-    state.nats.publish(publish_subject, serde_json::to_vec(&envelope)?.into()).await?;
+    state
+        .nats
+        .publish(publish_subject, serde_json::to_vec(&envelope)?.into())
+        .await?;
 
     // Wait for response
-    let res = match tokio::time::timeout(std::time::Duration::from_secs(100), subscription.next()).await {
+    let res = match tokio::time::timeout(std::time::Duration::from_secs(100), subscription.next())
+        .await
+    {
         Ok(Some(msg)) => {
             let response: serde_json::Value = serde_json::from_slice(&msg.payload)?;
-            let payload = response.get("payload").ok_or_else(|| anyhow::anyhow!("Missing payload in response"))?;
-            
-            let output = payload.get("output").cloned().unwrap_or(serde_json::Value::Null);
-            let error = payload.get("error").and_then(|v| v.as_str()).map(|s| s.to_string());
+            let payload = response
+                .get("payload")
+                .ok_or_else(|| anyhow::anyhow!("Missing payload in response"))?;
+
+            let output = payload
+                .get("output")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            let error = payload
+                .get("error")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
 
             Ok(ActionResult {
                 action_id: req.action_id.clone(),
-                status: if error.is_none() { ActionStatus::Succeeded } else { ActionStatus::Failed },
-                connector: format!("executor_host:{}", profile),
+                status: if error.is_none() {
+                    ActionStatus::Succeeded
+                } else {
+                    ActionStatus::Failed
+                },
+                connector: format!("executor_host:{profile}"),
                 external_reference: None,
-                output: if output.is_array() { output } else { 
+                output: if output.is_array() {
+                    output
+                } else {
                     serde_json::json!([{ "type": "text", "text": if output.is_string() { output.as_str().unwrap().to_string() } else { serde_json::to_string_pretty(&output).unwrap_or_default() } }])
                 },
             })
@@ -816,13 +861,15 @@ async fn dispatch_to_dynamic_transport(
     grant: &SignedGrant,
     app_id: &str,
 ) -> Result<ActionResult> {
-    let registry = state.transport_registry.as_ref().ok_or_else(|| {
-        anyhow::anyhow!("Transport registry is not initialized")
-    })?;
+    let registry = state
+        .transport_registry
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Transport registry is not initialized"))?;
 
-    let transport = registry.get(app_id).await.ok_or_else(|| {
-        anyhow::anyhow!("No transport driver found for app: {}", app_id)
-    })?;
+    let transport = registry
+        .get(app_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("No transport driver found for app: {app_id}"))?;
 
     let input_hash = trust_core::canonical_json::canonical_hash(&req.action.arguments);
     let dispatch_req = trust_core::transport::TransportDispatchRequest {
@@ -838,8 +885,12 @@ async fn dispatch_to_dynamic_transport(
 
     Ok(ActionResult {
         action_id: req.action_id.clone(),
-        status: if result.success { ActionStatus::Succeeded } else { ActionStatus::Failed },
-        connector: format!("dynamic:{}", app_id),
+        status: if result.success {
+            ActionStatus::Succeeded
+        } else {
+            ActionStatus::Failed
+        },
+        connector: format!("dynamic:{app_id}"),
         external_reference: None,
         output: result.output.unwrap_or(serde_json::Value::Null),
     })
@@ -855,10 +906,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
         "list_bundles" => {
             let results = if let Some(ref registry) = state.tool_registry {
                 registry
-                    .refresh_if_stale(
-                            &state.http_client,
-                            &state.connectors.host_url,
-                    )
+                    .refresh_if_stale(&state.http_client, &state.connectors.host_url)
                     .await;
                 registry.all_tools().await
             } else {
@@ -871,7 +919,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
                 if let Some(cat) = entry.category {
                     bundle_tools
                         .entry(cat)
-                        .or_insert_with(Vec::new)
+                        .or_default()
                         .push((name, entry.description));
                 }
             }
@@ -883,7 +931,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
                 let mut sorted_bundles: Vec<_> = bundle_tools.into_iter().collect();
                 sorted_bundles.sort_by(|a, b| a.0.cmp(&b.0));
                 for (bundle, mut tools) in sorted_bundles {
-                    lines.push(format!("  • Bundle: {}", bundle));
+                    lines.push(format!("  • Bundle: {bundle}"));
                     tools.sort_by(|a, b| a.0.cmp(&b.0));
                     for (t_name, t_desc) in tools {
                         // Keep descriptions short to save tokens
@@ -892,10 +940,13 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
                         } else {
                             t_desc
                         };
-                        lines.push(format!("      - {}: {}", t_name, short_desc));
+                        lines.push(format!("      - {t_name}: {short_desc}"));
                     }
                 }
-                lines.push("\nTo access these tools, directly use: switch_context(bundle_name).".to_string());
+                lines.push(
+                    "\nTo access these tools, directly use: switch_context(bundle_name)."
+                        .to_string(),
+                );
                 lines.join("\n")
             }
         }
@@ -906,10 +957,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
             } else {
                 let results = if let Some(ref registry) = state.tool_registry {
                     registry
-                        .refresh_if_stale(
-                            &state.http_client,
-                            &state.connectors.host_url,
-                        )
+                        .refresh_if_stale(&state.http_client, &state.connectors.host_url)
                         .await;
                     registry.search_tools(query).await
                 } else {
@@ -917,7 +965,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
                 };
 
                 if results.is_empty() {
-                    format!("No skills found matching '{}'.", query)
+                    format!("No skills found matching '{query}'.")
                 } else {
                     let mut lines = vec![format!(
                         "Found {} skill(s) matching '{}':",
@@ -925,7 +973,7 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
                         query
                     )];
                     for (name, desc, cat) in results {
-                        lines.push(format!("  • {} [{}] — {}", name, cat, desc));
+                        lines.push(format!("  • {name} [{cat}] — {desc}"));
                     }
                     lines.join("\n")
                 }
@@ -951,28 +999,30 @@ async fn dispatch_internal_meta(state: &GatewayState, req: &ActionRequest) -> Re
 
                     // Key 1: session_jti (correlation_id or SSE UUID)
                     if !session_id.is_empty() {
-                        let key = format!("session_{}", session_id.replace(':', "_").replace('/', "_"));
+                        let key =
+                            format!("session_{}", session_id.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
 
                     // Key 2: requester_did
                     let req_did = &req.actor.requester_did;
                     if !req_did.is_empty() {
-                        let key = format!("session_{}", req_did.replace(':', "_").replace('/', "_"));
+                        let key =
+                            format!("session_{}", req_did.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
 
                     // Key 3: owner_did
                     let owner_did = &req.actor.owner_did;
                     if !owner_did.is_empty() {
-                        let key = format!("session_{}", owner_did.replace(':', "_").replace('/', "_"));
+                        let key =
+                            format!("session_{}", owner_did.replace([':', '/'], "_"));
                         let _ = store.put(&key, val.to_string().into()).await;
                     }
                 }
 
                 format!(
-                    "Successfully switched to bundle '{}'. Your tool list has been updated.",
-                    bundle
+                    "Successfully switched to bundle '{bundle}'. Your tool list has been updated."
                 )
             }
         }

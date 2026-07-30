@@ -30,7 +30,7 @@ pub fn normalize_http_propose(
         TransportKind::Http,
         remote_addr,
     )
-    .map_err(|e| format!("Identity extraction failed: {}", e))?;
+    .map_err(|e| format!("Identity extraction failed: {e}"))?;
 
     Ok(ProposedAction {
         action_id: uuid::Uuid::new_v4().to_string(),
@@ -40,8 +40,6 @@ pub fn normalize_http_propose(
         raw_meta: result.raw_meta,
     })
 }
-
-
 
 /// Normalize an MCP `tools/call` request via the SSE adapter.
 ///
@@ -58,7 +56,7 @@ pub fn normalize_mcp_call(
         TransportKind::McpSse,
         remote_addr,
     )
-    .map_err(|e| format!("Identity extraction failed: {}", e))?;
+    .map_err(|e| format!("Identity extraction failed: {e}"))?;
 
     Ok(ProposedAction {
         action_id: uuid::Uuid::new_v4().to_string(),

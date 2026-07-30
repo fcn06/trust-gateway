@@ -6,9 +6,9 @@
 // the grant's remaining lifetime (capped at 35s).
 // ─────────────────────────────────────────────────────────────
 
+use async_nats::jetstream;
 use std::time::Duration;
 use trust_core::errors::NonceError;
-use async_nats::jetstream;
 
 /// JetStream KV-backed nonce store for horizontally-scaled executors.
 ///
@@ -49,7 +49,7 @@ impl JetStreamNonceStore {
                     .get_key_value(&self.bucket_name)
                     .await
                     .map(|_| ())
-                    .map_err(|e| anyhow::anyhow!("Failed to access nonce bucket: {}", e))
+                    .map_err(|e| anyhow::anyhow!("Failed to access nonce bucket: {e}"))
             }
         }
     }
@@ -62,10 +62,10 @@ impl trust_core::traits::NonceStore for JetStreamNonceStore {
             .js
             .get_key_value(&self.bucket_name)
             .await
-            .map_err(|e| NonceError::Backend(format!("Failed to access nonce bucket: {}", e)))?;
+            .map_err(|e| NonceError::Backend(format!("Failed to access nonce bucket: {e}")))?;
 
         // RULE[020_JETSTREAM_KEYS.md]: Use _ as separator
-        let key = format!("nonce_{}", jti);
+        let key = format!("nonce_{jti}");
 
         // Check if JTI already exists
         match store.get(&key).await {
@@ -90,7 +90,7 @@ impl trust_core::traits::NonceStore for JetStreamNonceStore {
         store
             .put(&key, "1".into())
             .await
-            .map_err(|e| NonceError::Backend(format!("Failed to store nonce: {}", e)))?;
+            .map_err(|e| NonceError::Backend(format!("Failed to store nonce: {e}")))?;
 
         Ok(())
     }

@@ -318,7 +318,11 @@ enabled = false
             source_type: SourceType::ExternalSwarm,
             display_name: "Test Swarm".to_string(),
             transport_modes: vec![TransportKind::Http],
-            auth_mode: AuthMode::ApiKey { key_hash, expires_at: None, allowed_scopes: None },
+            auth_mode: AuthMode::ApiKey {
+                key_hash,
+                expires_at: None,
+                allowed_scopes: None,
+            },
             policy_profile: "test".to_string(),
             default_tenant_scope: None,
             enabled: true,
@@ -346,7 +350,11 @@ enabled = false
             source_type: SourceType::ExternalSwarm,
             display_name: "Disabled".to_string(),
             transport_modes: vec![TransportKind::Http],
-            auth_mode: AuthMode::ApiKey { key_hash, expires_at: None, allowed_scopes: None },
+            auth_mode: AuthMode::ApiKey {
+                key_hash,
+                expires_at: None,
+                allowed_scopes: None,
+            },
             policy_profile: "test".to_string(),
             default_tenant_scope: None,
             enabled: false, // Disabled!

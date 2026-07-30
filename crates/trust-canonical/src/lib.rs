@@ -8,7 +8,13 @@ pub fn canonical_json(value: &serde_json::Value) -> String {
             entries.sort_by(|a, b| a.0.cmp(b.0));
             let pairs: Vec<String> = entries
                 .into_iter()
-                .map(|(k, v)| format!("{}:{}", serde_json::to_string(k).unwrap(), canonical_json(v)))
+                .map(|(k, v)| {
+                    format!(
+                        "{}:{}",
+                        serde_json::to_string(k).unwrap(),
+                        canonical_json(v)
+                    )
+                })
                 .collect();
             format!("{{{}}}", pairs.join(","))
         }

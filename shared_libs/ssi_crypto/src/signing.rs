@@ -3,8 +3,8 @@
 //! Extracted from `ssi_vault::pack_signed` / `verify_signed`.
 //! Pure functions operating on key material — no persistence dependency.
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use base64::Engine;
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 
 /// A JWS (JSON Web Signature) envelope.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -71,15 +71,9 @@ pub fn verify_signed(envelope_json: &str) -> Result<String, String> {
 
     let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
-    let payload_b64 = envelope["payload"]
-        .as_str()
-        .ok_or("Missing payload")?;
-    let signature_b64 = envelope["signature"]
-        .as_str()
-        .ok_or("Missing signature")?;
-    let kid = envelope["kid"]
-        .as_str()
-        .ok_or("Missing kid")?;
+    let payload_b64 = envelope["payload"].as_str().ok_or("Missing payload")?;
+    let signature_b64 = envelope["signature"].as_str().ok_or("Missing signature")?;
+    let kid = envelope["kid"].as_str().ok_or("Missing kid")?;
 
     // Extract DID from kid
     let did = kid.split('#').next().ok_or("Invalid kid format")?;

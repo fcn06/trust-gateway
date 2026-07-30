@@ -4,11 +4,10 @@
 //! so the gateway never sees the actual DID in storage keys.
 
 use async_nats::jetstream::{self, Context as JsContext};
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
-use base64::Engine;
 use chrono::Utc;
+use hmac::{Hmac, Mac};
 use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 type HmacSha256 = Hmac<Sha256>;
 
@@ -34,8 +33,7 @@ pub struct MailboxMessage {
 /// Generate a blind pointer from a pairwise DID using HMAC-SHA256.
 /// The gateway_seed ensures the pointer is gateway-specific and unlinkable.
 pub fn blind_pointer(pairwise_did: &str, gateway_seed: &[u8]) -> String {
-    let mut mac = HmacSha256::new_from_slice(gateway_seed)
-        .expect("HMAC key length is valid");
+    let mut mac = HmacSha256::new_from_slice(gateway_seed).expect("HMAC key length is valid");
     mac.update(b"blind-mailbox:");
     mac.update(pairwise_did.as_bytes());
     let result = mac.finalize();
@@ -54,9 +52,11 @@ pub async fn init_stream(js: &JsContext) -> Result<(), async_nats::Error> {
 
     match js.get_or_create_stream(config).await {
         Ok(stream) => {
-            tracing::info!("📬 Blind Mailbox stream ready: {} ({} messages)", 
-                STREAM_NAME, 
-                stream.cached_info().state.messages);
+            tracing::info!(
+                "📬 Blind Mailbox stream ready: {} ({} messages)",
+                STREAM_NAME,
+                stream.cached_info().state.messages
+            );
             Ok(())
         }
         Err(e) => {
@@ -75,7 +75,7 @@ pub async fn store_message(
 ) -> Result<String, String> {
     let pointer = blind_pointer(pairwise_did, gateway_seed);
     let msg_id = uuid::Uuid::new_v4().to_string();
-    
+
     let msg = MailboxMessage {
         id: msg_id.clone(),
         encrypted_payload: encrypted_payload.to_string(),
@@ -83,20 +83,22 @@ pub async fn store_message(
         ttl_secs: DEFAULT_TTL_SECS,
     };
 
-    let payload = serde_json::to_vec(&msg)
-        .map_err(|e| format!("Serialization failed: {}", e))?;
+    let payload = serde_json::to_vec(&msg).map_err(|e| format!("Serialization failed: {e}"))?;
 
-    let subject = format!("mailbox.{}", pointer);
-    
+    let subject = format!("mailbox.{pointer}");
+
     js.publish(subject, payload.into())
         .await
-        .map_err(|e| format!("JetStream publish failed: {}", e))?
+        .map_err(|e| format!("JetStream publish failed: {e}"))?
         .await
-        .map_err(|e| format!("JetStream ack failed: {}", e))?;
+        .map_err(|e| format!("JetStream ack failed: {e}"))?;
 
-    tracing::info!("📬 Stored message {} in blind mailbox (pointer: {}…)", 
-        msg_id, &pointer[..12]);
-    
+    tracing::info!(
+        "📬 Stored message {} in blind mailbox (pointer: {}…)",
+        msg_id,
+        &pointer[..12]
+    );
+
     Ok(msg_id)
 }
 
@@ -108,11 +110,12 @@ pub async fn drain_mailbox(
     gateway_seed: &[u8],
 ) -> Result<Vec<MailboxMessage>, String> {
     let pointer = blind_pointer(pairwise_did, gateway_seed);
-    let filter_subject = format!("mailbox.{}", pointer);
-    
-    let stream = js.get_stream(STREAM_NAME)
+    let filter_subject = format!("mailbox.{pointer}");
+
+    let stream = js
+        .get_stream(STREAM_NAME)
         .await
-        .map_err(|e| format!("Stream not found: {}", e))?;
+        .map_err(|e| format!("Stream not found: {e}"))?;
 
     // Create an ephemeral consumer filtered to this DID's messages
     let consumer_config = jetstream::consumer::pull::Config {
@@ -125,10 +128,10 @@ pub async fn drain_mailbox(
     let consumer = stream
         .create_consumer(consumer_config)
         .await
-        .map_err(|e| format!("Consumer creation failed: {}", e))?;
+        .map_err(|e| format!("Consumer creation failed: {e}"))?;
 
     let mut messages = Vec::new();
-    
+
     // Fetch up to 100 messages with a short timeout
     let mut batch = consumer
         .fetch()
@@ -136,7 +139,7 @@ pub async fn drain_mailbox(
         .expires(std::time::Duration::from_secs(1))
         .messages()
         .await
-        .map_err(|e| format!("Fetch failed: {}", e))?;
+        .map_err(|e| format!("Fetch failed: {e}"))?;
 
     use futures::StreamExt;
     while let Some(Ok(msg)) = batch.next().await {
@@ -147,8 +150,11 @@ pub async fn drain_mailbox(
         let _ = msg.ack().await;
     }
 
-    tracing::info!("📬 Drained {} messages from blind mailbox (pointer: {}…)", 
-        messages.len(), &pointer[..12]);
+    tracing::info!(
+        "📬 Drained {} messages from blind mailbox (pointer: {}…)",
+        messages.len(),
+        &pointer[..12]
+    );
 
     Ok(messages)
 }

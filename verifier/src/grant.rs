@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 /// How an execution grant was obtained — tracks provenance of authorization decision.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema, Default,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantClearance {
     /// Tier 0: policy auto-allowed the action.

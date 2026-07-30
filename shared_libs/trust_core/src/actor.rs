@@ -171,7 +171,7 @@ impl SourceContext {
         let sid = source_id.into();
         Self {
             source_type: "external_swarm".to_string(),
-            name: Some(format!("External Swarm: {}", sid)),
+            name: Some(format!("External Swarm: {sid}")),
             instance_id,
         }
     }

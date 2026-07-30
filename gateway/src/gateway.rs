@@ -3,10 +3,11 @@
 // ─────────────────────────────────────────────────────────────
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use identity_context::AuthVerifier;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use trust_core::action::{ActionDescriptor, ActionRequest, ActionStatus, infer_operation, infer_category};
+use trust_core::action::{
+    infer_category, infer_operation, ActionDescriptor, ActionRequest, ActionStatus,
+};
 use trust_core::actor::ActorContext;
 use trust_core::audit::{AuditEvent, AuditEventType};
 use trust_core::decision::ActionDecision;
@@ -94,8 +95,6 @@ pub struct TaskStatus {
     pub status: String,
 }
 
-
-
 /// The HTTP API request for POST /v1/actions/propose.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProposeActionRequest {
@@ -154,9 +153,19 @@ pub async fn process_action(
             }
         }
     }
-    
+
     // We delegate the core execution loop to the rigid 5-step dispatch pipeline
-    dispatch_pipeline(state, action_req, action_id, action_name, tenant_id, source_type, session_jti, start_time).await
+    dispatch_pipeline(
+        state,
+        action_req,
+        action_id,
+        action_name,
+        tenant_id,
+        source_type,
+        session_jti,
+        start_time,
+    )
+    .await
 }
 
 /// The rigid 5-step pipeline for gateway governance.
@@ -171,8 +180,6 @@ async fn dispatch_pipeline(
     session_jti: String,
     start_time: std::time::Instant,
 ) -> Result<GatewayResponse> {
-
-
     // 1. Publish audit: action.proposed (Phase 7: enriched)
     crate::audit_sink::emit_audit(
         &*state.security.audit_sink,
@@ -297,7 +304,7 @@ async fn dispatch_pipeline(
         .policy_engine
         .evaluate(&action_req)
         .await
-        .map_err(|e| anyhow::anyhow!("Policy evaluation failed: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Policy evaluation failed: {e}"))?;
 
     // 3. Publish audit: policy.evaluated (enriched with agent_id)
     crate::audit_sink::emit_audit(
@@ -372,9 +379,10 @@ async fn dispatch_pipeline(
                             || source_type == "picoclaw";
 
                         if is_external {
-                            let egress_config = trust_core::egress_validator::EgressConfig::default();
-                            let output_str = serde_json::to_string(&action_result.output)
-                                .unwrap_or_default();
+                            let egress_config =
+                                trust_core::egress_validator::EgressConfig::default();
+                            let output_str =
+                                serde_json::to_string(&action_result.output).unwrap_or_default();
                             if let Err(violation) = trust_core::egress_validator::validate_egress(
                                 &output_str,
                                 &egress_config,
@@ -404,8 +412,7 @@ async fn dispatch_pipeline(
                                     status: "failed".to_string(),
                                     result: None,
                                     error: Some(format!(
-                                        "Response blocked by egress policy: {}",
-                                        violation
+                                        "Response blocked by egress policy: {violation}"
                                     )),
                                     approval_id: None,
                                     escalation: None,
@@ -493,7 +500,7 @@ async fn dispatch_pipeline(
                         action_id,
                         status: "failed".to_string(),
                         result: None,
-                        error: Some(format!("{}", e)),
+                        error: Some(format!("{e}")),
                         approval_id: None,
                         escalation: None,
                     })
@@ -548,7 +555,7 @@ async fn dispatch_pipeline(
                 approval_id: approval_id.clone(),
                 action_id: action_id.clone(),
                 tenant_id: tenant_id.clone(),
-                tier: tier.clone(),
+                tier: *tier,
                 reason: reason.clone(),
                 policy_id: policy_id.clone(),
                 action_summary,
@@ -634,7 +641,7 @@ async fn dispatch_pipeline(
                 result: None,
                 error: None,
                 approval_id: Some(approval_id),
-                escalation: Some(format!("{}", tier)),
+                escalation: Some(format!("{tier}")),
             })
         }
 
@@ -762,7 +769,9 @@ async fn dispatch_pipeline(
 /// HTTP propose, NATS dispatch, and MCP SSE tools/call.
 ///
 /// Phase 2.1: Extracted from 3 duplicated copies across api.rs, gateway.rs, and mcp_sse.rs.
-pub fn build_action_request(proposed: identity_context::models::ProposedAction) -> Result<ActionRequest> {
+pub fn build_action_request(
+    proposed: identity_context::models::ProposedAction,
+) -> Result<ActionRequest> {
     // Phase 8: Strip namespace prefix (e.g. "lianxi.io:google_calendar_list_events" -> "google_calendar_list_events")
     // This handles MCP clients (like Claude) that prefix tool names with the server name.
     let canonical_name = if let Some(pos) = proposed.tool_name.rfind(':') {
@@ -783,7 +792,9 @@ pub fn build_action_request(proposed: identity_context::models::ProposedAction) 
     // Strict Tenant Enforcement
     let tenant_id = proposed.identity.tenant_id.clone();
     if tenant_id.is_empty() || tenant_id == "default" || tenant_id == "unknown" {
-        return Err(anyhow::anyhow!("Strict tenant enforcement failed: valid tenant_id is required"));
+        return Err(anyhow::anyhow!(
+            "Strict tenant enforcement failed: valid tenant_id is required"
+        ));
     }
 
     Ok(ActionRequest {
@@ -820,10 +831,7 @@ pub fn build_action_request(proposed: identity_context::models::ProposedAction) 
 }
 
 /// Run the canonical NATS listener (subscribes to trust.v1.*.action.propose)
-pub async fn run_trust_v1_listener(
-    nc: async_nats::Client,
-    state: Arc<GatewayState>,
-) -> Result<()> {
+pub async fn run_trust_v1_listener(nc: async_nats::Client, state: Arc<GatewayState>) -> Result<()> {
     let subject = "trust.v1.*.action.propose";
     let mut subscriber = nc
         .subscribe(subject.to_string())
@@ -846,17 +854,28 @@ pub async fn run_trust_v1_listener(
             .to_string();
 
         tokio::spawn(async move {
-            let req: ProposeActionRequest = match serde_json::from_slice::<trust_core::action::NormalizedActionProposal>(&payload_bytes) {
+            let req: ProposeActionRequest = match serde_json::from_slice::<
+                trust_core::action::NormalizedActionProposal,
+            >(&payload_bytes)
+            {
                 Ok(normalized) => {
-                    tracing::info!("📥 Parsed NormalizedActionProposal for action: {}", normalized.action_name);
+                    tracing::info!(
+                        "📥 Parsed NormalizedActionProposal for action: {}",
+                        normalized.action_name
+                    );
                     ProposeActionRequest {
-                        session_jwt: normalized.payload.get("session_jwt").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                        session_jwt: normalized
+                            .payload
+                            .get("session_jwt")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
                         action_name: normalized.action_name,
                         arguments: normalized.action_arguments,
                         tenant_id: Some(normalized.tenant_id),
                         source_type: Some(normalized.source_type),
                     }
-                },
+                }
                 Err(e) => {
                     tracing::debug!("Failed to parse NormalizedActionProposal: {}, falling back to ProposeActionRequest", e);
                     match serde_json::from_slice(&payload_bytes) {
@@ -870,7 +889,9 @@ pub async fn run_trust_v1_listener(
             };
 
             // Extract correlation ID / trace ID
-            let trace_id = req.arguments.get("_meta")
+            let trace_id = req
+                .arguments
+                .get("_meta")
                 .and_then(|m| m.get("io.lianxi"))
                 .and_then(|i| i.get("correlation_id"))
                 .and_then(|c| c.as_str())
@@ -879,8 +900,12 @@ pub async fn run_trust_v1_listener(
                     if !req.session_jwt.is_empty() {
                         let parts: Vec<&str> = req.session_jwt.split('.').collect();
                         if parts.len() == 3 {
-                            if let Ok(decoded) = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(parts[1]) {
-                                if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&decoded) {
+                            if let Ok(decoded) =
+                                base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(parts[1])
+                            {
+                                if let Ok(json) =
+                                    serde_json::from_slice::<serde_json::Value>(&decoded)
+                                {
                                     if let Some(jti) = json.get("jti").and_then(|v| v.as_str()) {
                                         return jti.to_string();
                                     }
@@ -910,7 +935,7 @@ pub async fn run_trust_v1_listener(
                     Ok(id) => id,
                     Err(e) => {
                         tracing::warn!("🔒 Identity validation failed for NATS request on {}: {}", msg.subject, e);
-                        
+
                         // Reply with error to prevent client timeout
                         if let Some(reply) = reply_subject {
                             let error_resp = serde_json::json!({
@@ -1012,7 +1037,7 @@ pub(crate) async fn publish_audit(
 ) {
     let event =
         AuditEvent::new(event_type, component, tenant_id, payload).with_action_id(action_id);
-    let subject = format!("audit.action.{}", action_id);
+    let subject = format!("audit.action.{action_id}");
     let json = match serde_json::to_string(&event) {
         Ok(j) => j,
         Err(e) => {
@@ -1094,10 +1119,11 @@ pub async fn run_tools_list_listener(
             };
 
             let response = crate::mcp_sse::handle_tools_list(&state, None, &session_id).await;
-            
+
             // Convert JsonRpcResponse to the format expected by the client
-            let result_json = serde_json::to_value(&response).unwrap_or_else(|_| serde_json::json!({}));
-            
+            let result_json =
+                serde_json::to_value(&response).unwrap_or_else(|_| serde_json::json!({}));
+
             // The client expects an object with a "tools" array
             let final_response = if let Some(result) = result_json.get("result") {
                 result.clone()
@@ -1105,7 +1131,15 @@ pub async fn run_tools_list_listener(
                 result_json
             };
 
-            if let Err(e) = nc.publish(reply_subject, serde_json::to_string(&final_response).unwrap_or_default().into()).await {
+            if let Err(e) = nc
+                .publish(
+                    reply_subject,
+                    serde_json::to_string(&final_response)
+                        .unwrap_or_default()
+                        .into(),
+                )
+                .await
+            {
                 tracing::error!("❌ Failed to send tools list reply: {}", e);
             }
         });

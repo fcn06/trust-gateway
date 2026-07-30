@@ -7,7 +7,10 @@
 // when the Host is absent or as a supplementary source.
 // ─────────────────────────────────────────────────────────────
 
-use axum::{extract::State, response::{Json, IntoResponse}};
+use axum::{
+    extract::State,
+    response::{IntoResponse, Json},
+};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -80,10 +83,7 @@ pub async fn registry_handler(
     // Source 1: Existing ToolRegistry (Host skills.json + VP MCP)
     if let Some(ref registry) = state.tool_registry {
         registry
-            .refresh_if_stale(
-                &state.http_client,
-                &state.connectors.host_url,
-            )
+            .refresh_if_stale(&state.http_client, &state.connectors.host_url)
             .await;
 
         for (name, entry) in registry.all_tools().await {
@@ -117,10 +117,16 @@ pub async fn registry_handler(
                             category: tool.bundle_membership.first().cloned(),
                             tags: tool.bundle_membership,
                             risk_hint: tool.risk_tier.map(|r| match r {
-                                trust_core::tool_registry::RiskTier::ReadOnly => "read_only".to_string(),
+                                trust_core::tool_registry::RiskTier::ReadOnly => {
+                                    "read_only".to_string()
+                                }
                                 trust_core::tool_registry::RiskTier::Write => "write".to_string(),
-                                trust_core::tool_registry::RiskTier::Financial => "financial".to_string(),
-                                trust_core::tool_registry::RiskTier::Destructive => "destructive".to_string(),
+                                trust_core::tool_registry::RiskTier::Financial => {
+                                    "financial".to_string()
+                                }
+                                trust_core::tool_registry::RiskTier::Destructive => {
+                                    "destructive".to_string()
+                                }
                             }),
                             procedure_type: None,
                             cron: None,

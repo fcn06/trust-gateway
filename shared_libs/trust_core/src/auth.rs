@@ -116,12 +116,24 @@ impl VerifiedJwt {
         }
     }
 
-    pub fn tenant_id(&self) -> &str { &self.tenant_id }
-    pub fn subject(&self) -> &str { &self.subject }
-    pub fn auth_level(&self) -> VerifiedAuthLevel { self.auth_level }
-    pub fn session_jti(&self) -> &str { &self.session_jti }
-    pub fn token_class(&self) -> TokenClass { self.token_class }
-    pub fn expires_at(&self) -> i64 { self.expires_at }
+    pub fn tenant_id(&self) -> &str {
+        &self.tenant_id
+    }
+    pub fn subject(&self) -> &str {
+        &self.subject
+    }
+    pub fn auth_level(&self) -> VerifiedAuthLevel {
+        self.auth_level
+    }
+    pub fn session_jti(&self) -> &str {
+        &self.session_jti
+    }
+    pub fn token_class(&self) -> TokenClass {
+        self.token_class
+    }
+    pub fn expires_at(&self) -> i64 {
+        self.expires_at
+    }
 
     /// Check if this token has expired.
     pub fn is_expired(&self) -> bool {
@@ -173,12 +185,12 @@ impl std::fmt::Display for AuthError {
             Self::UntrustedIssuer => write!(f, "JWT issuer is not trusted"),
             Self::AlgorithmNone => write!(f, "alg=none is not accepted"),
             Self::WrongTokenClass { expected, actual } => {
-                write!(f, "Expected {} but received {}", expected, actual)
+                write!(f, "Expected {expected} but received {actual}")
             }
             Self::ConflictingCredentials => {
                 write!(f, "Multiple conflicting credential sources detected")
             }
-            Self::Internal(msg) => write!(f, "Internal auth error: {}", msg),
+            Self::Internal(msg) => write!(f, "Internal auth error: {msg}"),
         }
     }
 }

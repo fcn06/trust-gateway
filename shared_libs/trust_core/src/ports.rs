@@ -21,10 +21,8 @@ use crate::ports_dto::{ApprovalNotification, ResolvedIdentity};
 #[async_trait::async_trait]
 pub trait ApprovalNotifier: Send + Sync {
     /// Notify that an approval has been requested.
-    async fn notify_approval_requested(
-        &self,
-        request: &ApprovalNotification,
-    ) -> anyhow::Result<()>;
+    async fn notify_approval_requested(&self, request: &ApprovalNotification)
+        -> anyhow::Result<()>;
 }
 
 /// External identity resolution.

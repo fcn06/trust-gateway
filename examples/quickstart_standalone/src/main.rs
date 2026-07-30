@@ -35,7 +35,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Evaluate Policy
     let decision = CorePolicyEngine::evaluate(&action, 10000);
-    println!("⚖️ 2. Policy Decision: approved={}, reason='{}'", decision.approved, decision.reason);
+    println!(
+        "⚖️ 2. Policy Decision: approved={}, reason='{}'",
+        decision.approved, decision.reason
+    );
 
     assert!(decision.approved, "Policy denied action");
 
@@ -49,7 +52,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         30,
     );
 
-    println!("🔑 3. Issued ExecutionGrant: id='{}', input_hash='{}'", grant.grant_id, grant.input_hash);
+    println!(
+        "🔑 3. Issued ExecutionGrant: id='{}', input_hash='{}'",
+        grant.grant_id, grant.input_hash
+    );
 
     // 4. Dispatch to ReferenceExecutor
     let executor = ReferenceExecutor::default();
@@ -61,8 +67,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let result = executor.execute(granted_action).await?;
 
-    println!("⚡ 4. Execution Result: status={:?}, duration={}ms", result.status, result.duration_ms);
-    println!("🔒 5. Sanitized Output:\n{}", serde_json::to_string_pretty(&result.output)?);
+    println!(
+        "⚡ 4. Execution Result: status={:?}, duration={}ms",
+        result.status, result.duration_ms
+    );
+    println!(
+        "🔒 5. Sanitized Output:\n{}",
+        serde_json::to_string_pretty(&result.output)?
+    );
 
     println!("=====================================================");
     println!("✅ Standalone execution completed successfully!");

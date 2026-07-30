@@ -11,7 +11,7 @@ impl SecretString {
     pub fn new(s: String) -> Self {
         Self(s)
     }
-    
+
     pub fn expose_secret(&self) -> &str {
         &self.0
     }

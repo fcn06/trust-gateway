@@ -97,7 +97,6 @@ pub struct ToolDescriptor {
     pub operation_attributes: crate::action::OperationAttributes,
 }
 
-
 impl ToolDescriptor {
     /// Create a tool descriptor with sensible defaults.
     pub fn new(
@@ -127,7 +126,6 @@ impl ToolDescriptor {
             operation_attributes: crate::action::OperationAttributes::default(),
         }
     }
-
 
     /// Generate the NATS KV key for this descriptor.
     /// RULE 020: Uses `_` as separator, never `:`.

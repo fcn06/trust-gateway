@@ -140,7 +140,6 @@ impl Default for OperationAttributes {
     }
 }
 
-
 /// Result returned after a connector executes an action.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ActionResult {
@@ -203,4 +202,3 @@ pub fn infer_category(name: &str) -> String {
     // Try underscore: "google_calendar_list_events" → "google"
     name.split('_').next().unwrap_or("unknown").to_string()
 }
-

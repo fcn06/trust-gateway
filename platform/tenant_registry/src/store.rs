@@ -5,8 +5,8 @@
 
 use async_nats::jetstream;
 use async_nats::jetstream::kv::Store as KvStore;
-use tenant_context::{Tenant, TenantStatus};
 use futures::StreamExt;
+use tenant_context::{Tenant, TenantStatus};
 
 /// Persistent store for tenant records, backed by NATS JetStream KV.
 #[derive(Clone)]
@@ -17,12 +17,14 @@ pub struct TenantStore {
 impl TenantStore {
     /// Create (or bind to) the `tenant_registry` KV bucket.
     pub async fn new(js: jetstream::Context) -> anyhow::Result<Self> {
-        let kv = js.create_key_value(jetstream::kv::Config {
-            bucket: "tenant_registry".to_string(),
-            description: "Tenant Registry — control plane storage".to_string(),
-            history: 5,
-            ..Default::default()
-        }).await?;
+        let kv = js
+            .create_key_value(jetstream::kv::Config {
+                bucket: "tenant_registry".to_string(),
+                description: "Tenant Registry — control plane storage".to_string(),
+                history: 5,
+                ..Default::default()
+            })
+            .await?;
         Ok(Self { kv })
     }
 
@@ -43,7 +45,7 @@ impl TenantStore {
                 Ok(Some(tenant))
             }
             Ok(None) => Ok(None),
-            Err(e) => Err(anyhow::anyhow!("KV get error: {}", e)),
+            Err(e) => Err(anyhow::anyhow!("KV get error: {e}")),
         }
     }
 

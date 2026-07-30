@@ -120,8 +120,8 @@ impl TokenValidator for SsiTokenValidator {
     ) -> Result<trust_auth::IdentityContext, StatusCode> {
         let token = extract_bearer_token(headers).ok_or(StatusCode::UNAUTHORIZED)?;
 
-        let mut resolver = trust_auth::AuthResolver::new(secret)
-            .with_http_client(self.http_client.clone());
+        let mut resolver =
+            trust_auth::AuthResolver::new(secret).with_http_client(self.http_client.clone());
         if let Some(ref cache) = self.did_web_cache {
             resolver = resolver.with_did_web_cache(cache.clone());
         }
@@ -153,7 +153,9 @@ impl TokenValidator for SsiTokenValidator {
 /// Peek at a JWT-encoded token to determine if it is a Verifiable Presentation.
 fn is_verifiable_presentation(token: &str) -> bool {
     let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 { return false; }
+    if parts.len() != 3 {
+        return false;
+    }
     use base64::Engine;
     if let Ok(decoded) = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(parts[1]) {
         if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&decoded) {
@@ -232,7 +234,7 @@ mod tests {
         let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.invalid_sig";
         headers.insert(
             axum::http::header::AUTHORIZATION,
-            format!("Bearer {}", token).parse().unwrap(),
+            format!("Bearer {token}").parse().unwrap(),
         );
 
         let result = validator.validate(&headers, "test-secret").await;
@@ -259,11 +261,11 @@ mod tests {
             }))
             .unwrap(),
         );
-        let token = format!("{}.{}.fake_sig", header, payload);
+        let token = format!("{header}.{payload}.fake_sig");
 
         headers.insert(
             axum::http::header::AUTHORIZATION,
-            format!("Bearer {}", token).parse().unwrap(),
+            format!("Bearer {token}").parse().unwrap(),
         );
 
         let result = validator.validate(&headers, "test-secret").await;

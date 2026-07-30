@@ -131,7 +131,7 @@ impl PolicyMatcher {
 
 /// Parse a money string like "100.00 EUR" into a Money value.
 fn parse_money(s: &str) -> Option<Money> {
-    let parts: Vec<&str> = s.trim().split_whitespace().collect();
+    let parts: Vec<&str> = s.split_whitespace().collect();
     if parts.len() != 2 {
         return None;
     }

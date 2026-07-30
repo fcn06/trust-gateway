@@ -6,10 +6,7 @@ use trust_model::{ExecutionResult, GrantedAction, TransactionOutcomeState};
 #[async_trait]
 pub trait Executor: Send + Sync {
     /// Execute a tool action after verifying cryptographic grant binding.
-    async fn execute(
-        &self,
-        action: GrantedAction,
-    ) -> Result<ExecutionResult, anyhow::Error>;
+    async fn execute(&self, action: GrantedAction) -> Result<ExecutionResult, anyhow::Error>;
 }
 
 /// Verify input binding between grant `input_hash` and action arguments.
@@ -20,9 +17,7 @@ pub fn verify_input_hash(
     let computed = canonical_hash(arguments);
     if grant_hash != computed {
         anyhow::bail!(
-            "Input hash mismatch: grant claimed {}, computed {}",
-            grant_hash,
-            computed
+            "Input hash mismatch: grant claimed {grant_hash}, computed {computed}"
         );
     }
     Ok(())

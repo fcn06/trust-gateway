@@ -40,16 +40,19 @@ pub mod oauth_token;
 pub mod transport;
 
 // Modular Crates Re-exports
-pub use trust_model as model;
-pub use trust_canonical as canonical;
-pub use trust_grants as grants;
 pub use trust_audit as audit_crate;
+pub use trust_canonical as canonical;
 pub use trust_egress as egress_crate;
 pub use trust_executor_sdk as executor_sdk;
+pub use trust_grants as grants;
+pub use trust_model as model;
 
 // Re-export the most commonly used types at crate root for ergonomics.
 
-pub use action::{ActionDescriptor, ActionRequest, ActionResult, ActionStatus, OperationKind, infer_operation, infer_category};
+pub use action::{
+    infer_category, infer_operation, ActionDescriptor, ActionRequest, ActionResult, ActionStatus,
+    OperationKind,
+};
 pub use actor::{ActorContext, AuthLevel, AuthMethod, SourceContext};
 pub use agent::{
     AgentEnvironment, AgentRecord, AgentStatus, AgentType, RegisterAgentRequest, UpdateAgentRequest,

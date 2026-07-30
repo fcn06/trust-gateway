@@ -10,9 +10,9 @@
 // when onboarding new integrations.
 // ─────────────────────────────────────────────────────────────
 
-use serde::{Deserialize, Serialize};
 use crate::tool_registry::RiskTier;
 use crate::transport::TransportType;
+use serde::{Deserialize, Serialize};
 
 /// The type of application being registered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -195,9 +195,7 @@ impl AppManifest {
         let mut seen_names = std::collections::HashSet::new();
         for tool in &self.tools {
             if tool.name.is_empty() {
-                return Err(ManifestValidationError::MissingField(
-                    "tool.name".into(),
-                ));
+                return Err(ManifestValidationError::MissingField("tool.name".into()));
             }
             if !seen_names.insert(&tool.name) {
                 return Err(ManifestValidationError::DuplicateTool(tool.name.clone()));
@@ -207,14 +205,26 @@ impl AppManifest {
         // Transport-specific validation
         match self.routing.transport_type {
             TransportType::Sse => {
-                if self.routing.sse_url.as_ref().map(|u| u.is_empty()).unwrap_or(true) {
+                if self
+                    .routing
+                    .sse_url
+                    .as_ref()
+                    .map(|u| u.is_empty())
+                    .unwrap_or(true)
+                {
                     return Err(ManifestValidationError::MissingField(
                         "routing.sse_url (required for SSE transport)".into(),
                     ));
                 }
             }
             TransportType::Stdio => {
-                if self.routing.stdio_command.as_ref().map(|c| c.is_empty()).unwrap_or(true) {
+                if self
+                    .routing
+                    .stdio_command
+                    .as_ref()
+                    .map(|c| c.is_empty())
+                    .unwrap_or(true)
+                {
                     return Err(ManifestValidationError::MissingField(
                         "routing.stdio_command (required for Stdio transport)".into(),
                     ));
@@ -258,15 +268,13 @@ mod tests {
                 app_type: AppType::Mcp,
                 version: "1.0.0".into(),
             },
-            tools: vec![
-                ManifestToolDescriptor {
-                    name: "hubspot_get_contact".into(),
-                    description: "Get a contact".into(),
-                    input_schema: serde_json::json!({"type": "object"}),
-                    risk_tier: Some(RiskTier::ReadOnly),
-                    bundle_membership: vec!["crm".into()],
-                },
-            ],
+            tools: vec![ManifestToolDescriptor {
+                name: "hubspot_get_contact".into(),
+                description: "Get a contact".into(),
+                input_schema: serde_json::json!({"type": "object"}),
+                risk_tier: Some(RiskTier::ReadOnly),
+                bundle_membership: vec!["crm".into()],
+            }],
             routing: RoutingConfig {
                 nats_profile: None,
                 transport_type: TransportType::Sse,

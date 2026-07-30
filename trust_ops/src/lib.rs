@@ -40,6 +40,12 @@ pub struct TrustOperationsPlane {
     revoked_grant_ids: Vec<String>,
 }
 
+impl Default for TrustOperationsPlane {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrustOperationsPlane {
     pub fn new() -> Self {
         Self {

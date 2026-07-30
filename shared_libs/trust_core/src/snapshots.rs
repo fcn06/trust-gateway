@@ -11,14 +11,13 @@ mod tests {
 
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("snapshots");
-        path.push(format!("{}.json", name));
+        path.push(format!("{name}.json"));
 
         if !path.exists() {
             // Create initial snapshot if it doesn't exist
             fs::write(&path, &schema_json).expect("Failed to write initial snapshot");
             panic!(
-                "Snapshot created for {}. Please review and commit it.",
-                name
+                "Snapshot created for {name}. Please review and commit it."
             );
         }
 
@@ -92,12 +91,7 @@ mod tests {
 
         // Assert the EXACT set of required fields as of SEC-2.
         // input_hash was promoted from optional to required.
-        let expected = vec![
-            "clearance",
-            "expires_at",
-            "input_hash",
-            "tenant_id",
-        ];
+        let expected = vec!["clearance", "expires_at", "input_hash", "tenant_id"];
         assert_eq!(
             required_names, expected,
             "ExecutionGrant required fields changed! Update this test if intentional."
@@ -156,8 +150,7 @@ mod tests {
             let json = serde_json::to_string(variant).unwrap();
             assert_eq!(
                 &json, expected_json,
-                "GrantClearance serialization changed for {:?}",
-                variant
+                "GrantClearance serialization changed for {variant:?}"
             );
         }
         // Ensure we have exactly 4 variants by testing that these are all of them.
@@ -204,7 +197,7 @@ mod tests {
         ];
         for (variant, expected_debug) in &variants {
             assert_eq!(
-                format!("{:?}", variant),
+                format!("{variant:?}"),
                 *expected_debug,
                 "AuthLevel debug representation changed"
             );

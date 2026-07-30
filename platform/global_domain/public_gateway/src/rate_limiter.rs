@@ -44,13 +44,13 @@ impl RateLimiter {
     /// Check if a request should be allowed.
     /// Returns Ok(()) if allowed, Err(reason) if denied.
     pub fn check_tenant(&self, tenant_id: &str) -> Result<(), String> {
-        let key = format!("tenant:{}", tenant_id);
+        let key = format!("tenant:{tenant_id}");
         self.check_rate(&key, self.config.tenant_rpm)
     }
 
     /// Check per-sender rate limit.
     pub fn check_sender(&self, sender_id: &str) -> Result<(), String> {
-        let key = format!("sender:{}", sender_id);
+        let key = format!("sender:{sender_id}");
         self.check_rate(&key, self.config.sender_rpm)
     }
 
@@ -71,13 +71,13 @@ impl RateLimiter {
         let window = Duration::from_secs(60);
 
         let mut map = self.windows.lock().unwrap();
-        let timestamps = map.entry(key.to_string()).or_insert_with(Vec::new);
+        let timestamps = map.entry(key.to_string()).or_default();
 
         // Prune old entries
         timestamps.retain(|t| now.duration_since(*t) < window);
 
         if timestamps.len() as u32 >= max_rpm {
-            return Err(format!("Rate limit exceeded for {}", key));
+            return Err(format!("Rate limit exceeded for {key}"));
         }
 
         timestamps.push(now);

@@ -3,9 +3,9 @@
 //! Looks up `tenant_id` from the routing token, resolves tenant NATS credentials,
 //! and publishes messages into the correct tenant namespace.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use serde::{Deserialize, Serialize};
 
 /// Routing token V2 — signed by gateway key, includes tenant context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +42,12 @@ pub struct TenantNatsRouter {
     routes: Arc<Mutex<HashMap<String, TenantRoute>>>,
 }
 
+impl Default for TenantNatsRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TenantNatsRouter {
     pub fn new() -> Self {
         Self {
@@ -60,7 +66,11 @@ impl TenantNatsRouter {
                 status: TenantGatewayStatus::Active,
             },
         );
-        tracing::info!("🔗 Registered tenant route: {} → {}", tenant_id, subject_prefix);
+        tracing::info!(
+            "🔗 Registered tenant route: {} → {}",
+            tenant_id,
+            subject_prefix
+        );
     }
 
     /// Resolve the NATS subject for a tenant + target.
@@ -75,7 +85,7 @@ impl TenantNatsRouter {
         match map.get(tenant_id) {
             Some(route) => {
                 if route.status == TenantGatewayStatus::Suspended {
-                    return Err(format!("Tenant {} is suspended", tenant_id));
+                    return Err(format!("Tenant {tenant_id} is suspended"));
                 }
                 Ok(format!(
                     "{}.{}.didcomm.{}",
@@ -84,7 +94,9 @@ impl TenantNatsRouter {
             }
             None => {
                 // Fallback: use default subject format with tenant prefix
-                Ok(format!("v1.{}.{}.didcomm.{}", tenant_id, node_id, target_id))
+                Ok(format!(
+                    "v1.{tenant_id}.{node_id}.didcomm.{target_id}"
+                ))
             }
         }
     }
@@ -100,11 +112,13 @@ impl TenantNatsRouter {
         let map = self.routes.lock().unwrap();
         if let Some(route) = map.get(tenant_id) {
             if route.status == TenantGatewayStatus::Suspended {
-                return Err(format!("Tenant {} is suspended", tenant_id));
+                return Err(format!("Tenant {tenant_id} is suspended"));
             }
         }
         // Wallet messages use a dedicated subject namespace
-        Ok(format!("v1.{}.{}.wallet.{}", tenant_id, node_id, pairwise_did_pointer))
+        Ok(format!(
+            "v1.{tenant_id}.{node_id}.wallet.{pairwise_did_pointer}"
+        ))
     }
 
     /// Suspend a tenant (deny all routing).

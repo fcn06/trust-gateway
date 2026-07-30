@@ -52,11 +52,7 @@ impl OAuthToken {
     /// Generate the NATS KV key for this token.
     /// RULE 020: Uses `_` as separator, never `:`.
     pub fn kv_key(&self) -> String {
-        format!(
-            "{}_{}",
-            self.tenant_id.replace('.', "_"),
-            self.provider
-        )
+        format!("{}_{}", self.tenant_id.replace('.', "_"), self.provider)
     }
 
     /// Generate a KV key from tenant_id and provider strings.
@@ -69,10 +65,7 @@ impl OAuthToken {
 #[derive(Debug, thiserror::Error)]
 pub enum TokenError {
     #[error("provider '{provider}' not connected for tenant '{tenant_id}'")]
-    NotConnected {
-        tenant_id: String,
-        provider: String,
-    },
+    NotConnected { tenant_id: String, provider: String },
     #[error("access token expired and no refresh token available")]
     ExpiredNoRefresh,
     #[error("token refresh failed: {0}")]
@@ -139,17 +132,10 @@ pub trait TokenBroker: Send + Sync {
     ) -> Result<OAuthToken, TokenError>;
 
     /// Revoke and delete a stored token.
-    async fn revoke_token(
-        &self,
-        tenant_id: &str,
-        provider: &str,
-    ) -> Result<(), TokenError>;
+    async fn revoke_token(&self, tenant_id: &str, provider: &str) -> Result<(), TokenError>;
 
     /// List all connected providers for a tenant.
-    async fn list_connected_providers(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<String>, TokenError>;
+    async fn list_connected_providers(&self, tenant_id: &str) -> Result<Vec<String>, TokenError>;
 }
 
 #[cfg(test)]

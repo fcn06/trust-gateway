@@ -39,7 +39,7 @@ impl ApprovalNotifier for LocalDashboardNotifier {
         self.nats
             .publish("ui.v1.local.events".to_string(), bytes.into())
             .await
-            .map_err(|e| anyhow::anyhow!("Failed to publish approval notification: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Failed to publish approval notification: {e}"))?;
 
         tracing::info!(
             "📢 Approval notification sent to dashboard: {} ({})",

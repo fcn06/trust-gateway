@@ -161,23 +161,23 @@ impl AuthVerifier for HmacAuthVerifier {
             return Err(AuthVerifyError::MissingToken);
         }
 
-        use jwt_simple::prelude::{MACLike, VerificationOptions, Duration};
-        
+        use jwt_simple::prelude::{Duration, MACLike, VerificationOptions};
+
         let mut options = VerificationOptions::default();
         // Phase 6: Strict clock skew enforcement (±5 seconds)
         options.time_tolerance = Some(Duration::from_secs(5));
-        
+
         if let Some(aud) = &self.allowed_audience {
             options.allowed_audiences = Some(std::collections::HashSet::from([aud.clone()]));
         }
         if let Some(iss) = &self.required_issuer {
             options.allowed_issuers = Some(std::collections::HashSet::from([iss.clone()]));
         }
-        
+
         let verified = self
             .key
             .verify_token::<JwtClaims>(token, Some(options))
-            .map_err(|e| AuthVerifyError::SignatureInvalid(format!("{}", e)))?;
+            .map_err(|e| AuthVerifyError::SignatureInvalid(format!("{e}")))?;
 
         let mut claims = verified.custom;
 
@@ -207,7 +207,7 @@ impl Ed25519AuthVerifier {
     /// Create a new Ed25519 verifier from a PEM-encoded public key.
     pub fn from_pem(pem: &str) -> Result<Self, String> {
         let public_key = jwt_simple::prelude::Ed25519PublicKey::from_pem(pem)
-            .map_err(|e| format!("Invalid Ed25519 PEM public key: {}", e))?;
+            .map_err(|e| format!("Invalid Ed25519 PEM public key: {e}"))?;
         Ok(Self {
             public_key,
             allowed_audience: None,
@@ -216,9 +216,13 @@ impl Ed25519AuthVerifier {
     }
 
     /// Create a new Ed25519 verifier with audience and issuer checks.
-    pub fn with_audience_and_issuer(pem: &str, audience: String, issuer: String) -> Result<Self, String> {
+    pub fn with_audience_and_issuer(
+        pem: &str,
+        audience: String,
+        issuer: String,
+    ) -> Result<Self, String> {
         let public_key = jwt_simple::prelude::Ed25519PublicKey::from_pem(pem)
-            .map_err(|e| format!("Invalid Ed25519 PEM public key: {}", e))?;
+            .map_err(|e| format!("Invalid Ed25519 PEM public key: {e}"))?;
         Ok(Self {
             public_key,
             allowed_audience: Some(audience),
@@ -233,23 +237,23 @@ impl AuthVerifier for Ed25519AuthVerifier {
             return Err(AuthVerifyError::MissingToken);
         }
 
-        use jwt_simple::prelude::{VerificationOptions, Duration};
         use jwt_simple::algorithms::EdDSAPublicKeyLike;
-        
+        use jwt_simple::prelude::{Duration, VerificationOptions};
+
         let mut options = VerificationOptions::default();
         options.time_tolerance = Some(Duration::from_secs(15));
-        
+
         if let Some(aud) = &self.allowed_audience {
             options.allowed_audiences = Some(std::collections::HashSet::from([aud.clone()]));
         }
         if let Some(iss) = &self.required_issuer {
             options.allowed_issuers = Some(std::collections::HashSet::from([iss.clone()]));
         }
-        
+
         let verified = self
             .public_key
             .verify_token::<JwtClaims>(token, Some(options))
-            .map_err(|e| AuthVerifyError::SignatureInvalid(format!("{}", e)))?;
+            .map_err(|e| AuthVerifyError::SignatureInvalid(format!("{e}")))?;
 
         let mut claims = verified.custom;
 
@@ -371,7 +375,7 @@ mod tests {
         let encoder = base64::engine::general_purpose::URL_SAFE_NO_PAD;
         let header = encoder.encode(b"{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
         let payload = encoder.encode(serde_json::to_vec(claims).unwrap());
-        format!("{}.{}.test_sig", header, payload)
+        format!("{header}.{payload}.test_sig")
     }
 
     #[test]
@@ -448,8 +452,8 @@ mod tests {
 
     #[test]
     fn test_hmac_auth_verifier_audience_and_issuer() {
-        use jwt_simple::prelude::{HS256Key, Claims, MACLike, Duration};
-        
+        use jwt_simple::prelude::{Claims, Duration, HS256Key, MACLike};
+
         #[derive(Serialize, Deserialize)]
         struct TestCustomClaims {
             tenant_id: String,
@@ -458,20 +462,20 @@ mod tests {
 
         let secret = "test-secret-key-12345678901234567890";
         let key = HS256Key::from_bytes(secret.as_bytes());
-        
+
         let claims = Claims::with_custom_claims(
             TestCustomClaims {
                 tenant_id: "test_tenant".to_string(),
                 scope: vec!["test_scope".to_string()],
             },
-            Duration::from_secs(3600)
+            Duration::from_secs(3600),
         )
         .with_issuer("test_issuer")
         .with_subject("test_subject")
         .with_audience("test_audience");
-        
+
         let token = key.authenticate(claims).unwrap();
-        
+
         // 1. Success validation
         let verifier = HmacAuthVerifier::with_audience_and_issuer(
             secret,
@@ -480,7 +484,7 @@ mod tests {
         );
         let verified = verifier.verify(&token).unwrap();
         assert_eq!(verified.tenant_id, "test_tenant");
-        
+
         // 2. Mismatched audience
         let verifier_bad_aud = HmacAuthVerifier::with_audience_and_issuer(
             secret,
@@ -488,7 +492,7 @@ mod tests {
             "test_issuer".to_string(),
         );
         assert!(verifier_bad_aud.verify(&token).is_err());
-        
+
         // 3. Mismatched issuer
         let verifier_bad_iss = HmacAuthVerifier::with_audience_and_issuer(
             secret,

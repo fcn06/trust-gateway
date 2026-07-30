@@ -6,10 +6,10 @@
 // defined in oauth_token.rs.
 // ─────────────────────────────────────────────────────────────
 
+use crate::oauth_token::OAuthProviderConfig;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use serde::{Deserialize, Serialize};
-use crate::oauth_token::OAuthProviderConfig;
 
 /// Wrapper for the list of providers in `oauth_providers.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]

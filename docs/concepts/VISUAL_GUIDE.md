@@ -80,13 +80,13 @@ sequenceDiagram
 
 | Concept | What It Does | Codebase Location |
 | :--- | :--- | :--- |
-| **`ProposedAction`** | The raw intent submitted by the agent ("What I want to do"). | [`crates/trust-model`](../crates/trust-model) |
-| **`Policy Engine`** | Evaluates action attributes against `policy.toml` priority rules. | [`crates/trust-policy`](../crates/trust-policy) |
-| **`ExecutionGrant`** | Short-lived (30s-60s) Ed25519-signed JWT proving authority to execute. | [`crates/trust-grants`](../crates/trust-grants) |
-| **`input_hash`** | SHA-256 digest of canonicalized JSON arguments preventing parameter tampering. | [`crates/trust-canonical`](../crates/trust-canonical) |
-| **`Single-Use Nonce`** | Tracking mechanism ensuring an `ExecutionGrant` can never be reused. | [`gateway/src/grant.rs`](../gateway/src/grant.rs) |
-| **`Executor Host`** | Isolated execution runtime verifying Ed25519 signatures before dispatching tools. | [`executor_host/`](../executor_host) |
-| **`PII Egress Filter`** | Regex and LLM-powered privacy shield scrubbing API keys, SSNs, and emails from results. | [`crates/trust-egress`](../crates/trust-egress) |
+| **`ProposedAction`** | The raw intent submitted by the agent ("What I want to do"). | [`crates/trust-model`](../../crates/trust-model) |
+| **`Policy Engine`** | Evaluates action attributes against `policy.toml` priority rules. | [`crates/trust-policy`](../../crates/trust-policy) |
+| **`ExecutionGrant`** | Short-lived (30s-60s) Ed25519-signed JWT proving authority to execute. | [`crates/trust-grants`](../../crates/trust-grants) |
+| **`input_hash`** | SHA-256 digest of canonicalized JSON arguments preventing parameter tampering. | [`crates/trust-canonical`](../../crates/trust-canonical) |
+| **`Single-Use Nonce`** | Tracking mechanism ensuring an `ExecutionGrant` can never be reused. | [`gateway/src/grant.rs`](../../gateway/src/grant.rs) |
+| **`Executor Host`** | Isolated execution runtime verifying Ed25519 signatures before dispatching tools. | [`executor_host/`](../../executor_host) |
+| **`PII Egress Filter`** | Regex and LLM-powered privacy shield scrubbing API keys, SSNs, and emails from results. | [`crates/trust-egress`](../../crates/trust-egress) |
 
 ---
 

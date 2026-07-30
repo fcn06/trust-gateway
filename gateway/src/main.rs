@@ -20,10 +20,10 @@ mod agent_api;
 mod agent_registry;
 mod amount_extractor;
 mod api;
+pub mod app_registry;
 mod approval_daemon;
 mod approval_http;
 mod approval_store;
-pub mod app_registry;
 pub mod auth;
 mod cron_scheduler;
 mod mcp_sse;
@@ -61,7 +61,6 @@ struct Args {
     #[arg(long, env = "POLICY_PATH", default_value = "config/policy.toml")]
     policy_path: String,
 
-
     /// Connector MCP server URL
     #[arg(
         long,
@@ -77,7 +76,6 @@ struct Args {
     /// Public Portal URL (for external UI redirects like login)
     #[arg(long, env = "PORTAL_URL", default_value = "http://127.0.0.1:3000")]
     portal_url: String,
-
 
     /// JWT signing secret (shared with Host's ssi_vault)
     #[arg(long, env = "JWT_SECRET")]
@@ -102,7 +100,11 @@ struct Args {
     /// Comma-separated list of tool names that are always visible in MCP tools/list,
     /// regardless of the active context bundle. These are the "default tools" for
     /// the Smart Filtering system.
-    #[arg(long, env = "DEFAULT_TOOLS", default_value = "search_skills,switch_context,list_bundles,vp_search,claw_weather,claw_extract_content_from_url,claw_hello_world,inspect_schema,compute_statistics,detect_anomalies,generate_markdown,join_datasets,sample_rows,discover_agent_services,call_b2b_agent,register_b2b_agent,list_registered_b2b_agents,discover_b2b_agents")]
+    #[arg(
+        long,
+        env = "DEFAULT_TOOLS",
+        default_value = "search_skills,switch_context,list_bundles,vp_search,claw_weather,claw_extract_content_from_url,claw_hello_world,inspect_schema,compute_statistics,detect_anomalies,generate_markdown,join_datasets,sample_rows,discover_agent_services,call_b2b_agent,register_b2b_agent,list_registered_b2b_agents,discover_b2b_agents"
+    )]
     default_tools: String,
 }
 
@@ -124,26 +126,32 @@ async fn run_supervised<F, Fut, E>(
         if token.is_cancelled() {
             tracing::info!("🛑 Supervisor [{}] shutting down", name);
             if let Some(ref map) = statuses {
-                map.insert(name.to_string(), gateway::TaskStatus {
-                    last_started: chrono::Utc::now(),
-                    restart_count,
-                    status: "stopped".to_string(),
-                });
+                map.insert(
+                    name.to_string(),
+                    gateway::TaskStatus {
+                        last_started: chrono::Utc::now(),
+                        restart_count,
+                        status: "stopped".to_string(),
+                    },
+                );
             }
             break;
         }
 
         tracing::info!("🚀 Supervisor starting daemon: {}", name);
         if let Some(ref map) = statuses {
-            map.insert(name.to_string(), gateway::TaskStatus {
-                last_started: chrono::Utc::now(),
-                restart_count,
-                status: "running".to_string(),
-            });
+            map.insert(
+                name.to_string(),
+                gateway::TaskStatus {
+                    last_started: chrono::Utc::now(),
+                    restart_count,
+                    status: "running".to_string(),
+                },
+            );
         }
 
         let fut = job();
-        
+
         tokio::select! {
             _ = token.cancelled() => {
                 tracing::info!("🛑 Supervisor [{}] cancelled during execution", name);
@@ -170,11 +178,14 @@ async fn run_supervised<F, Fut, E>(
 
         restart_count += 1;
         if let Some(ref map) = statuses {
-            map.insert(name.to_string(), gateway::TaskStatus {
-                last_started: chrono::Utc::now(),
-                restart_count,
-                status: "failed".to_string(),
-            });
+            map.insert(
+                name.to_string(),
+                gateway::TaskStatus {
+                    last_started: chrono::Utc::now(),
+                    restart_count,
+                    status: "failed".to_string(),
+                },
+            );
         }
 
         // Apply backoff
@@ -235,7 +246,7 @@ async fn main() -> Result<()> {
 
     // Load policy engine
     let policy_engine = trust_policy::TomlPolicyEngine::from_file(&args.policy_path)
-        .map_err(|e| anyhow::anyhow!("Failed to load policy: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to load policy: {e}"))?;
     let policy_fp = policy_fingerprint::load_and_fingerprint(
         &std::fs::read_to_string(&args.policy_path).unwrap_or_default(),
         Some(std::path::Path::new(&args.policy_path)),
@@ -461,7 +472,9 @@ async fn main() -> Result<()> {
                             if env != "development" {
                                 panic!("HMAC grant signing is disabled in non-development environments. Fix Ed25519 key.");
                             }
-                            tracing::warn!("⚠️ Falling back to HMAC grant signing (development only — SEC-1)");
+                            tracing::warn!(
+                                "⚠️ Falling back to HMAC grant signing (development only — SEC-1)"
+                            );
                             Arc::new(grant::HmacGrantIssuer::new(jwt_secret_raw))
                         }
                     }
@@ -473,7 +486,9 @@ async fn main() -> Result<()> {
                     if env != "development" {
                         panic!("HMAC grant signing is disabled in non-development environments. Fix Ed25519 key.");
                     }
-                    tracing::warn!("⚠️ Falling back to HMAC grant signing (development only — SEC-1)");
+                    tracing::warn!(
+                        "⚠️ Falling back to HMAC grant signing (development only — SEC-1)"
+                    );
                     Arc::new(grant::HmacGrantIssuer::new(jwt_secret_raw))
                 }
             }
@@ -531,7 +546,8 @@ async fn main() -> Result<()> {
     // Build shared gateway state
     let did_web_cache = js.get_key_value("did_web_cache").await.ok();
 
-    let tool_listing_overlay: Arc<dyn trust_core::ports::ToolListingOverlay> = Arc::new(trust_core::ports::StatelessToolListingOverlay);
+    let tool_listing_overlay: Arc<dyn trust_core::ports::ToolListingOverlay> =
+        Arc::new(trust_core::ports::StatelessToolListingOverlay);
 
     let allowed_origins: Vec<String> = args
         .allowed_origins
@@ -558,14 +574,16 @@ async fn main() -> Result<()> {
     ));
 
     let transport_registry = crate::transport::TransportRegistry::new();
-    transport_registry.register(
-        "default",
-        Arc::new(crate::transport::NatsMcpDriver::new(
-            nc.clone(),
-            "connector",
-            policy_fp.hash.clone(),
-        )),
-    ).await;
+    transport_registry
+        .register(
+            "default",
+            Arc::new(crate::transport::NatsMcpDriver::new(
+                nc.clone(),
+                "connector",
+                policy_fp.hash.clone(),
+            )),
+        )
+        .await;
     let transport_registry = Arc::new(transport_registry);
 
     let app_registry_kv = match js.get_key_value("app_registry").await {
@@ -646,7 +664,7 @@ async fn main() -> Result<()> {
     });
 
     let cancel_token = tokio_util::sync::CancellationToken::new();
-    let mut background_tasks = tokio_util::task::TaskTracker::new();
+    let background_tasks = tokio_util::task::TaskTracker::new();
 
     // Phase 4: Emit PolicyLoaded audit event at startup
     audit_sink::emit_audit(
@@ -674,10 +692,8 @@ async fn main() -> Result<()> {
         move || {
             let client = trust_v1_client.clone();
             let state = trust_v1_state.clone();
-            async move {
-                gateway::run_trust_v1_listener(client, state).await
-            }
-        }
+            async move { gateway::run_trust_v1_listener(client, state).await }
+        },
     ));
 
     // Phase 4b: Spawn NATS tools.list listener for bundle-aware discovery
@@ -691,10 +707,8 @@ async fn main() -> Result<()> {
         move || {
             let client = tools_list_client.clone();
             let state = tools_list_state.clone();
-            async move {
-                gateway::run_tools_list_listener(client, state).await
-            }
-        }
+            async move { gateway::run_tools_list_listener(client, state).await }
+        },
     ));
 
     // Phase 2: Spawn AppRegistry listener for dynamic registrations
@@ -713,9 +727,8 @@ async fn main() -> Result<()> {
                     Ok(())
                 }
             }
-        }
+        },
     ));
-
 
     // Spawn audit timeline projector (Trust Replay)
     let projector_js = async_nats::jetstream::new(nc.clone());
@@ -733,21 +746,19 @@ async fn main() -> Result<()> {
                     match audit_projector::spawn_projector(js, &stream).await {
                         Ok(handle) => {
                             if let Err(e) = handle.await {
-                                Err(anyhow::anyhow!("Projector task failed: {}", e))
+                                Err(anyhow::anyhow!("Projector task failed: {e}"))
                             } else {
                                 Ok(())
                             }
                         }
-                        Err(e) => Err(anyhow::anyhow!("Failed to spawn projector: {}", e)),
+                        Err(e) => Err(anyhow::anyhow!("Failed to spawn projector: {e}")),
                     }
                 }
-            }
+            },
         ));
     } else {
         tracing::warn!("⚠️ No audit stream available — projector disabled");
     }
-
-
 
     // WS1.5: Subscribe to tool registry hot-reload events
     // Gated behind ENABLE_HOT_RELOAD — nothing currently publishes to these subjects
@@ -830,7 +841,7 @@ async fn main() -> Result<()> {
                 approval_daemon::run_execution_daemon(state).await;
                 Ok::<(), anyhow::Error>(())
             }
-        }
+        },
     ));
 
     let token = cancel_token.clone();
@@ -845,7 +856,7 @@ async fn main() -> Result<()> {
                 approval_daemon::run_decision_listener(state).await;
                 Ok::<(), anyhow::Error>(())
             }
-        }
+        },
     ));
 
     let token = cancel_token.clone();
@@ -860,7 +871,7 @@ async fn main() -> Result<()> {
                 approval_daemon::run_escalation_sweeper(state).await;
                 Ok::<(), anyhow::Error>(())
             }
-        }
+        },
     ));
 
     let token = cancel_token.clone();
@@ -875,7 +886,7 @@ async fn main() -> Result<()> {
                 cron_scheduler::run_cron_scheduler(state).await;
                 Ok::<(), anyhow::Error>(())
             }
-        }
+        },
     ));
 
     background_tasks.close();

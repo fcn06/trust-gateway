@@ -8,18 +8,30 @@ pub struct VerifiedGrant {
 }
 
 impl VerifiedGrant {
-    /// Create a new VerifiedGrant. 
+    /// Create a new VerifiedGrant.
     /// In production, this should only be called after verifying the signature.
     pub fn new(inner: ExecutionGrant) -> Self {
         Self { inner }
     }
 
-    pub fn grant_id(&self) -> &str { &self.inner.grant_id }
-    pub fn action_id(&self) -> &str { &self.inner.action_id }
-    pub fn tenant_id(&self) -> &str { &self.inner.tenant_id }
-    pub fn owner_did(&self) -> &str { &self.inner.owner_did }
-    pub fn allowed_action(&self) -> &str { &self.inner.allowed_action }
-    pub fn input_hash(&self) -> &str { &self.inner.input_hash }
+    pub fn grant_id(&self) -> &str {
+        &self.inner.grant_id
+    }
+    pub fn action_id(&self) -> &str {
+        &self.inner.action_id
+    }
+    pub fn tenant_id(&self) -> &str {
+        &self.inner.tenant_id
+    }
+    pub fn owner_did(&self) -> &str {
+        &self.inner.owner_did
+    }
+    pub fn allowed_action(&self) -> &str {
+        &self.inner.allowed_action
+    }
+    pub fn input_hash(&self) -> &str {
+        &self.inner.input_hash
+    }
 }
 
 /// Core interface for tool/skill execution.

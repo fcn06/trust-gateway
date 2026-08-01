@@ -268,7 +268,13 @@ pub fn builtin_descriptors() -> Vec<ToolDescriptor> {
             display_name: "Google Calendar — List Events".into(),
             description: "List upcoming events from the user's Google Calendar. Useful for checking availability or schedule.".into(),
             mcp_name: "google_calendar_list_events".into(),
-            input_schema: serde_json::json!({"type": "object"}),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "max_results": { "type": "integer", "description": "Maximum number of events to list" },
+                    "time_min": { "type": "string", "description": "Minimum event start time (ISO 8601)" }
+                }
+            }),
             output_schema: serde_json::json!({"type": "object"}),
             risk_tier: RiskTier::ReadOnly,
             executor_profile: ExecutorProfile::Connector,
@@ -286,7 +292,16 @@ pub fn builtin_descriptors() -> Vec<ToolDescriptor> {
             display_name: "Google Calendar — Create Event".into(),
             description: "Create a new event in the user's Google Calendar. Requires event details like summary, start time, and end time.".into(),
             mcp_name: "google_calendar_create_event".into(),
-            input_schema: serde_json::json!({"type": "object"}),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "summary": { "type": "string", "description": "Event title/summary" },
+                    "start_time": { "type": "string", "description": "Start time (ISO 8601 string, e.g. 2026-08-01T08:30:00+02:00)" },
+                    "end_time": { "type": "string", "description": "End time (ISO 8601 string, e.g. 2026-08-01T09:30:00+02:00)" },
+                    "description": { "type": "string", "description": "Event description" }
+                },
+                "required": ["summary", "start_time", "end_time"]
+            }),
             output_schema: serde_json::json!({"type": "object"}),
             risk_tier: RiskTier::Write,
             executor_profile: ExecutorProfile::Connector,
@@ -306,7 +321,13 @@ pub fn builtin_descriptors() -> Vec<ToolDescriptor> {
             display_name: "Shopify — List Orders".into(),
             description: "Retrieve a list of recent orders from the Shopify e-commerce store. Useful for checking order status, fulfillment, or customer purchases.".into(),
             mcp_name: "shopify_list_orders".into(),
-            input_schema: serde_json::json!({"type": "object"}),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "limit": { "type": "integer", "description": "Limit of orders to retrieve" },
+                    "status": { "type": "string", "description": "Status filter" }
+                }
+            }),
             output_schema: serde_json::json!({"type": "object"}),
             risk_tier: RiskTier::ReadOnly,
             executor_profile: ExecutorProfile::Connector,
@@ -324,7 +345,13 @@ pub fn builtin_descriptors() -> Vec<ToolDescriptor> {
             display_name: "Stripe — List Payments".into(),
             description: "Retrieve a list of recent payments and transactions from Stripe. Useful for verifying refunds, charges, or overall revenue status.".into(),
             mcp_name: "stripe_list_payments".into(),
-            input_schema: serde_json::json!({"type": "object"}),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "limit": { "type": "integer", "description": "Limit of payments to retrieve" },
+                    "status": { "type": "string", "description": "Status filter" }
+                }
+            }),
             output_schema: serde_json::json!({"type": "object"}),
             risk_tier: RiskTier::ReadOnly,
             executor_profile: ExecutorProfile::Connector,

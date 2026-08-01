@@ -202,7 +202,7 @@ priority = 20
 | Arguments changed after approval | `input_hash` SHA-256 verification fails at executor |
 | Grant replayed | Single-use nonce consumption rejects replay |
 | Session JWT used as execution authority | JWT class separation rejects it |
-| Agent compromised | Agent has no executor credentials or API keys |
+| Agent compromised | Agent never holds standing API keys — only single-use, narrowly-scoped grants that fail replay/tamper checks at the executor |
 | Unknown or unregistered tool | Fail-closed policy denial |
 | Executor receives forged grant | Ed25519 signature verification fails |
 | Crash during execution | `action_id` idempotency + reconciliation prevents duplicate side effects |

@@ -4,7 +4,7 @@ To ensure complete transparency and avoid security posture misrepresentation, th
 
 | Guarantee | Nature | Implementation Mechanism | Domain Module |
 |---|---|---|---|
-| Grant Signature & Audience | **Cryptographic** | Ed25519 asymmetric signature & strict audience validation | `crates/trust-grants`, `crates/trust-auth` |
+| Grant Signature & Audience | **Cryptographic** | Ed25519 asymmetric signature required in production (`LIANXI_ENV=production`), HMAC strictly gated to `LIANXI_ENV=development` with hard boot-time refusal | `crates/trust-grants`, `crates/trust-auth`, `gateway` |
 | Input Binding | **Cryptographic** | SHA-256 canonical JSON input hash binding | `crates/trust-canonical`, `crates/trust-executor-sdk` |
 | Replay Prevention | **Deterministic** | Single-use JTI tracking via JetStream KV | `crates/trust-grants`, `adapters/storage-nats-kv` |
 | Policy Evaluation | **Deterministic** | Priority-ordered attribute-based policy matching | `crates/trust-policy`, `policy-sdk` |

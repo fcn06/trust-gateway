@@ -19,7 +19,7 @@
 
 ### Prerequisites
 
-- **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.75+**):
+- **[Rust Toolchain](https://www.rust-lang.org/tools/install)** (`rustc` & `cargo` **1.88+**):
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   ```
@@ -184,6 +184,7 @@ priority = 20
 3. **Single-Use Replay Prevention**: Nonce tracking guarantees a grant cannot be executed twice.
 4. **JWT Class Separation**: Session JWTs are strictly prohibited from acting as Execution Grants.
 5. **Fail-Closed Default**: Unrecognized tools or missing policies default to `deny` or `read_only`.
+6. **Asymmetric Production Signing**: Ed25519 asymmetric grant signing is required in production (`LIANXI_ENV=production`), with HMAC symmetric signing strictly gated to `LIANXI_ENV=development` and hard boot-time refusal otherwise.
 
 ---
 

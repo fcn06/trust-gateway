@@ -7,7 +7,7 @@
 
 > **Zero-Trust Governance & Execution Control Plane for Autonomous AI Agents**
 
-`trust-gateway` is an open-source execution authorization engine. It decouples an AI Agent's **intent to act** from the **authority to execute mutations** against real-world APIs, SaaS tools, and local execution environments.
+`trust-gateway` is an open-source **transaction authorization protocol for AI agents**. It creates portable, short-lived execution authorizations cryptographically bound to one tool invocation and independently verified at the execution boundary — decoupling an agent's **intent to act** from the **authority to execute mutations**.
 
 - 🤖 **Agents propose** actions — they never execute directly
 - 🛡️ **Gateway evaluates** policy rules and mints short-lived, Ed25519-signed execution grants
@@ -111,18 +111,20 @@ The architecture maps the 5 execution steps directly into 3 core pillars:
                    │  - Attribute Policy Evaluator        │
                    │  - Short-Lived Ed25519 Grant Issuer  │
                    └──────────────────┬───────────────────┘
-                                      │ 2. Signed ExecutionGrant JWT
+                                      │ 2. Signed GrantedAction
                                       ▼
                    ┌──────────────────────────────────────┐
                    │            EXECUTOR HOST             │
                    │  - Verify Ed25519 Grant Signature    │
                    │  - Verify SHA-256 input_hash         │
                    │  - Check Single-Use Nonces           │
+                   │  - Execute ──────► SaaS / API        │
+                   │  - PII / Secret Egress Scrubbing     │
                    └──────────────────┬───────────────────┘
-                                      │ 3. PII Sanitized Result
+                                      │ 3. Sanitized ExecutionResult
                                       ▼
                    ┌──────────────────────────────────────┐
-                   │              SAAS / API              │
+                   │          AGENT / CALLER              │
                    └──────────────────────────────────────┘
 ```
 
@@ -143,14 +145,20 @@ sequenceDiagram
     Gateway->>Policy: Check policy.toml
     Policy-->>Gateway: Approved
     Gateway->>Gateway: Mint Ed25519 ExecutionGrant JWT
-    Gateway-->>Agent: ExecutionGrant JWT
-    Agent->>Executor: Execute (Grant + Args)
+    alt Managed Dispatch (Production Default)
+        Gateway->>Executor: GrantedAction (Grant JWT + Canonical Args) via NATS
+    else Portable Grant (REST / MCP clients)
+        Gateway-->>Agent: ExecutionGrant JWT
+        Agent->>Executor: Execute (Grant + Args)
+    end
     Executor->>Executor: Verify Ed25519 & SHA-256(input_hash)
     Executor->>API: Execute Tool
     API-->>Executor: Raw Output
     Executor->>Executor: Scrub PII / Secrets
     Executor-->>Agent: Sanitized Result
 ```
+
+> **Managed dispatch** is the production default: the Gateway dispatches directly to the Executor via `exec.v1.<tenant>.<profile>.invoke` NATS subjects. **Portable grant** mode is available for REST and MCP integrations where the client receives the grant and presents it to the executor.
 
 ---
 
@@ -181,10 +189,35 @@ priority = 20
 
 1. **No Direct Execution**: Agents never execute actions directly; all mutations require an `ExecutionGrant`.
 2. **Cryptographic Binding**: Grants contain SHA-256 `input_hash` of exact arguments to prevent post-approval parameter tampering.
-3. **Single-Use Replay Prevention**: Nonce tracking guarantees a grant cannot be executed twice.
+3. **Single-Use Replay Prevention**: Single-use nonce consumption prevents grant replay. Action-level idempotency (`action_id` + `execution_results` KV store) and execution-state reconciliation protect against duplicate external side effects.
 4. **JWT Class Separation**: Session JWTs are strictly prohibited from acting as Execution Grants.
-5. **Fail-Closed Default**: Unrecognized tools or missing policies default to `deny` or `read_only`.
+5. **Fail-Closed Default**: Unknown tools, missing policy coverage, invalid credentials, or unverifiable action attributes are denied. Read-only execution is an explicitly classified and policy-authorized capability, not a fallback.
 6. **Asymmetric Production Signing**: Ed25519 asymmetric grant signing is required in production (`LIANXI_ENV=production`), with HMAC symmetric signing strictly gated to `LIANXI_ENV=development` and hard boot-time refusal otherwise.
+
+### 🛡️ Threat Mitigation Matrix
+
+| Attack or Failure | Control |
+| :--- | :--- |
+| Prompt injection requests unauthorized tool | Policy engine denies the proposal |
+| Arguments changed after approval | `input_hash` SHA-256 verification fails at executor |
+| Grant replayed | Single-use nonce consumption rejects replay |
+| Session JWT used as execution authority | JWT class separation rejects it |
+| Agent compromised | Agent has no executor credentials or API keys |
+| Unknown or unregistered tool | Fail-closed policy denial |
+| Executor receives forged grant | Ed25519 signature verification fails |
+| Crash during execution | `action_id` idempotency + reconciliation prevents duplicate side effects |
+
+### ✅ Security Conformance
+
+The following security properties are continuously verified by CI ([`ci.yml`](.github/workflows/ci.yml)) and the conformance test suite ([`conformance/`](conformance/)):
+
+- ✓ Rejects modified arguments (input_hash mismatch)
+- ✓ Rejects expired grants
+- ✓ Rejects replayed grants (nonce consumed)
+- ✓ Rejects wrong tool binding
+- ✓ Rejects session JWT as execution grant
+- ✓ Rejects HMAC grants in production mode
+- ✓ Rejects unknown algorithms
 
 ---
 
@@ -214,6 +247,8 @@ priority = 20
 - **[`docs/reference/PROTOCOL_SPEC.md`](docs/reference/PROTOCOL_SPEC.md)**: Open Execution Authorization Protocol specification
 - **[`docs/reference/security-guarantees.md`](docs/reference/security-guarantees.md)**: Security guarantees classification matrix
 - **[`docs/reference/NATS_TOPOLOGY.md`](docs/reference/NATS_TOPOLOGY.md)**: Messaging topology principles
+- **[`docs/reference/WORKSPACE_STRUCTURE.md`](docs/reference/WORKSPACE_STRUCTURE.md)**: Full workspace directory reference
+- **[`docs/reference/API_TRANSPORTS.md`](docs/reference/API_TRANSPORTS.md)**: API interfaces, transports & dispatch modes
 
 ### Contributor Guide
 
@@ -221,63 +256,22 @@ priority = 20
 
 ---
 
-## 📦 Workspace Structure
+## 📦 Workspace Overview
 
-### Core Domain Logic & Technology Adapters
-- **[`crates/`](crates/)** (Domain-Driven Security Logic):
-  - `trust-model`: Canonical data models (`ProposedAction`, `ExecutionGrant`, `TransactionOutcomeState`, `OperationAttributes`).
-  - `trust-canonical`: Deterministic JSON key sorting & SHA-256 `input_hash` calculation.
-  - `trust-auth`: Scoped JWT signature verifiers & class isolation.
-  - `trust-policy`: Priority-ordered attribute-based policy evaluation engine.
-  - `trust-grants`: Ed25519 `ExecutionGrant` minting & replay-nonce tracking.
-  - `trust-audit`: Hash-chained audit log generator.
-  - `trust-egress`: PII redacting regex scrubbing engine & response bounds validator.
-  - `trust-executor-sdk`: Abstract `Executor` trait & crash reconciliation handler.
-  - `trust-reference-executor`: Zero-dependency mock executor for local testing.
+| Area | Key Crates / Directories |
+| :--- | :--- |
+| **Domain Logic** | `crates/` (trust-model, trust-canonical, trust-auth, trust-policy, trust-grants, trust-audit, trust-egress, trust-executor-sdk) |
+| **Adapters** | `adapters/` (transport-nats, storage-nats-kv) |
+| **Control Plane** | `gateway/`, `executor_host/`, `platform/` |
+| **Tools & Specs** | `verifier/`, `policy-sdk/`, `trustctl/`, `conformance/`, `test-vectors/` |
 
-- **[`adapters/`](adapters/)** (Technology Transports & Storage):
-  - `transport-nats`: Decoupled NATS pub/sub message router.
-  - `storage-nats-kv`: NATS JetStream key-value state adapter.
+→ Full directory reference: [`docs/reference/WORKSPACE_STRUCTURE.md`](docs/reference/WORKSPACE_STRUCTURE.md)
 
-### Control Plane Executables & Routers
-- **[`gateway/`](gateway/)**: Control plane daemon binary (main router, policy evaluator, and approval daemon).
-- **[`executor_host/`](executor_host/)**: Hardened execution runtime daemon dispatching execution profiles (`native-tool`, `connector`, `vp`).
-- **[`platform/`](platform/)**: Edge routing infrastructure:
-  - `global_domain/public_gateway`: Ingress edge router bridging A2A requests over NATS.
-  - `tenant_registry`: Directory store mapping public DID identities to workspace tenants.
-  - `tenant_context`: Multi-tenant credentials schemas and configuration metadata.
-- **[`shared_libs/`](shared_libs/)**: Facade libraries re-exporting domain crates (`trust_core`, `trust_policy`, `trust_auth`).
-- **[`connector_mcp_server/`](connector_mcp_server/)**: Standalone HTTP OAuth2 callback redirect server.
+## 📡 API Transports
 
-### Tools, Testing & Specifications
-- **[`native_tools/`](native_tools/)**: Sandboxed shell and python execution scripts.
-- **[`verifier/`](verifier/)**: Zero-dependency standalone Ed25519 execution grant verification crate.
-- **[`policy-sdk/`](policy-sdk/)**: Policy rules parser and validation SDK.
-- **[`trust_ops/`](trust_ops/)**: Operational utilities and administrative tools.
-- **[`trustctl/`](trustctl/)**: CLI management utility (`policy lint`, `policy simulate`, `audit verify`).
-- **[`conformance/`](conformance/)**: Test suite runner for security invariants and grant vector verification.
-- **[`examples/`](examples/)**: Standalone quickstart, REST, Python, and Kubernetes deployment examples.
-- **[`protocol/`](protocol/)**: Protocol specification documents for A2A and execution grant formats.
-- **[`security/`](security/)**: Security policies, threat assessments, and security invariants.
-- **[`threat-model/`](threat-model/)**: Threat modeling diagrams and attack surface analysis.
-- **[`test-vectors/`](test-vectors/)**: JSON test vector files for grant verification and input binding.
-- **[`tests/`](tests/)**: Integration and regression test suites.
-- **[`config/`](config/)**: Deployment configuration files and policy templates.
-- **[`deploy/`](deploy/)**: Docker Compose and deployment assets.
+Trust Gateway provides **MCP** (SSE + Streamable), **REST/HTTP**, **NATS A2A**, **Human Approval**, and **OAuth2/OIDC** interfaces.
 
----
-
-## 📡 Available API Interfaces & Transports
-
-`trust-gateway` provides multiple standardized API transports for seamless integration with AI agents, governance dashboards, and executor runtimes:
-
-| Interface / Transport | Endpoint / Channel | Protocol & Description |
-| :--- | :--- | :--- |
-| **🔌 MCP (Model Context Protocol)** | `GET /v1/mcp/sse`<br/>`POST /v1/mcp/messages` | **MCP over HTTP SSE / Streamable**: Enables AI clients (Claude Desktop, Cursor, Custom LLM Agents) to dynamically discover governed tools (`tools/list`) and submit tool calls (`tools/call`). |
-| **🌐 REST / HTTP API** | `POST /v1/actions/propose`<br/>`GET /v1/tools/list` | **Standard JSON REST API**: Direct HTTP endpoints for proposing actions, fetching tool definitions, and monitoring service health (`GET /health`). |
-| **📨 A2A / NATS Event Protocol** | `trust.v1.*.action.propose`<br/>`trust.v1.*.tools.list` | **Agent-to-Agent Pub/Sub over NATS**: High-performance, decoupled event transport for async agent proposals and real-time JetStream audit streaming. |
-| **👤 Human Approval API** | `GET /v1/approvals`<br/>`POST /v1/approvals/:id/decision` | **Human-in-the-Loop Governance**: API endpoints for administrative portals and human reviewers to list pending escalations and submit approval/denial decisions. |
-| **🔐 OAuth2 & OIDC Discovery** | `/.well-known/openid-configuration`<br/>`/.well-known/oauth-protected-resource` | **Identity & OAuth Proxy**: Standardized OpenID & OAuth2 metadata discovery endpoints for third-party connector authentication workflows. |
+→ Full transport reference: [`docs/reference/API_TRANSPORTS.md`](docs/reference/API_TRANSPORTS.md)
 
 ---
 

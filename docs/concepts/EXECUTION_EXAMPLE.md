@@ -22,7 +22,7 @@ This document provides a step-by-step technical walkthrough of how an AI Agent p
 4. Grant Issuer ──────────► Minted Ed25519 `ExecutionGrant` JWT with SHA-256 `input_hash` binding
       │
       ▼
-5. Sandboxed Executor Host ─► Verified Ed25519 signature + SHA-256 `input_hash` + single-use nonce
+5. Hardened Executor Host ─► Verified Ed25519 signature + SHA-256 `input_hash` + single-use nonce
                             └─► Executed Python script (`run.py`) in sandboxed environment
                             └─► Egress Filter scrubbed PII
       │
@@ -56,12 +56,12 @@ Upon receiving the approval decision event:
 - `crates/trust-canonical` computes the RFC 8785 canonical JSON SHA-256 `input_hash` of arguments `{"dataset": "sales"}`.
 - `crates/trust-grants` issues a short-lived (60s) Ed25519-signed `ExecutionGrant` JWT containing the `input_hash`, target executor profile, and single-use `jti` replay nonce.
 
-### 5. Sandboxed Execution & Egress Scrubbing (`executor_host` & `crates/trust-egress`)
+### 5. Hardened Execution & Egress Scrubbing (`executor_host` & `crates/trust-egress`)
 The Executor Host receives the `ExecutionGrant` JWT:
 - **Signature Verification**: Verifies the Ed25519 signature against the Gateway's public key (`verifier`).
 - **Input Binding Verification**: Recalculates SHA-256 `input_hash` of actual arguments and asserts an exact match (preventing parameter tampering).
 - **Single-Use Replay Check**: Verifies the `jti` nonce has not been executed previously.
-- **Sandboxed Execution**: Runs `run.py` inside an isolated execution container.
+- **Hardened Execution**: Runs `run.py` inside a hardened subprocess (`env_clear`, process group isolation, resource limits).
 - **PII Egress Filter**: Passes stdout through `crates/trust-egress` regex scrubbing to redact sensitive PII before returning the final sanitized response to the chat interface:
   ```json
   {

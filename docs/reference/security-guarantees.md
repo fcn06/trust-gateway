@@ -9,6 +9,6 @@ To ensure complete transparency and avoid security posture misrepresentation, th
 | Replay Prevention | **Deterministic** | Single-use JTI tracking via JetStream KV | `crates/trust-grants`, `adapters/storage-nats-kv` |
 | Policy Evaluation | **Deterministic** | Priority-ordered attribute-based policy matching | `crates/trust-policy`, `policy-sdk` |
 | Human Approval | **Organizational** | WebAuthn biometric approval flow | `gateway/src/approval_daemon.rs` |
-| PII Scrubbing / Egress Validation | **Deterministic** | Regex PII scrubbing engine and structural response bounds | `crates/trust-egress` |
+| PII Scrubbing / Egress Validation | **Deterministic** | **Primary enforcement**: Executor-side mandatory filtering via `EgressFilter::sanitize_text()` before results leave the execution boundary. **Defense-in-depth**: Gateway-side structural validation of result bounds. | `crates/trust-egress`, `crates/trust-reference-executor`, `executor_host` |
 | Audit Trail Integrity | **Cryptographic** | Hash-chained audit event logging | `crates/trust-audit` |
 | WASM / Container Isolation | **Technical** | Wasmtime sandbox / OCI container boundaries | `executor_host` |

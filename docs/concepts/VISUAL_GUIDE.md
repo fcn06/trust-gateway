@@ -61,8 +61,12 @@ sequenceDiagram
     end
 
     Gateway->>Gateway: Calculate SHA-256(input_hash) & Mint Ed25519 ExecutionGrant JWT
-    Gateway-->>Agent: Return ExecutionGrant JWT
-    Agent->>Executor: Execute(Grant JWT + Canonical Args)
+    alt Managed Dispatch (Production Default)
+        Gateway->>Executor: GrantedAction (Grant JWT + Canonical Args) via NATS
+    else Portable Grant (REST / MCP clients)
+        Gateway-->>Agent: Return ExecutionGrant JWT
+        Agent->>Executor: Execute(Grant JWT + Canonical Args)
+    end
     
     Executor->>Executor: Verify Ed25519 Signature
     Executor->>Executor: Verify SHA-256(input_hash) matches args
@@ -73,6 +77,8 @@ sequenceDiagram
     Executor->>Executor: Apply PII & Secret Egress Scrubbing
     Executor-->>Agent: Return Sanitized Execution Result
 ```
+
+> **Managed dispatch** is the production default: the Gateway dispatches directly to the Executor via NATS. **Portable grant** mode is available for REST and MCP integrations.
 
 ---
 
@@ -86,7 +92,7 @@ sequenceDiagram
 | **`input_hash`** | SHA-256 digest of canonicalized JSON arguments preventing parameter tampering. | [`crates/trust-canonical`](../../crates/trust-canonical) |
 | **`Single-Use Nonce`** | Tracking mechanism ensuring an `ExecutionGrant` can never be reused. | [`gateway/src/grant.rs`](../../gateway/src/grant.rs) |
 | **`Executor Host`** | Isolated execution runtime verifying Ed25519 signatures before dispatching tools. | [`executor_host/`](../../executor_host) |
-| **`PII Egress Filter`** | Regex and LLM-powered privacy shield scrubbing API keys, SSNs, and emails from results. | [`crates/trust-egress`](../../crates/trust-egress) |
+| **`PII Egress Filter`** | Executor-side mandatory regex filter scrubbing API keys, emails, and secrets from results before they leave the execution boundary. | [`crates/trust-egress`](../../crates/trust-egress) |
 
 ---
 

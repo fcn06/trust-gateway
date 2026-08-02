@@ -286,3 +286,7 @@ make conformance  # Run protocol conformance vectors
 make lint         # Check formatting & clippy
 make audit        # CLI audit verification
 ```
+
+---
+
+Maintained by [lianxi.io](https://lianxi.io).

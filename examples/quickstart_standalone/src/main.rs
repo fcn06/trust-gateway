@@ -17,7 +17,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    let is_tamper = args.iter().any(|a| a == "--tamper" || a == "--simulate-attack");
+    let is_tamper = args
+        .iter()
+        .any(|a| a == "--tamper" || a == "--simulate-attack");
     let is_replay = args.iter().any(|a| a == "--replay");
 
     println!("=====================================================");
@@ -98,7 +100,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match executor.execute(tampered_action).await {
             Ok(result) => {
-                println!("❌ UNEXPECTED: Executor allowed tampered execution: status={:?}", result.status);
+                println!(
+                    "❌ UNEXPECTED: Executor allowed tampered execution: status={:?}",
+                    result.status
+                );
             }
             Err(err) => {
                 println!("⚡ 4. Execution REJECTED: {}", err);
@@ -126,7 +131,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match executor.execute(granted_action).await {
             Ok(result2) => {
-                println!("❌ UNEXPECTED: Executor allowed replayed grant: status={:?}", result2.status);
+                println!(
+                    "❌ UNEXPECTED: Executor allowed replayed grant: status={:?}",
+                    result2.status
+                );
             }
             Err(err) => {
                 println!("⚡ 4b. Execution REJECTED: {}", err);
@@ -164,4 +172,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=====================================================");
     Ok(())
 }
-

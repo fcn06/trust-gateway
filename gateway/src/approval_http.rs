@@ -612,4 +612,3 @@ mod tests {
         assert_eq!(method_for(Some(&level5_ident)), "webauthn_session");
     }
 }
-

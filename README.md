@@ -31,15 +31,28 @@
 
 ### Run the Demo
 
+#### 1. Happy Path Demo
 ```bash
-git clone https://github.com/fcn06/trust-gateway
-cd trust-gateway
 cargo run -p quickstart-standalone
+# or: make quickstart
 ```
 
-> Or, equivalently: `make quickstart`
+#### 2. Argument Tampering Attack Simulation (`--tamper`)
+Demonstrates live rejection by the executor when an attacker tampers with action parameters after grant issuance:
+```bash
+cargo run -p quickstart-standalone -- --tamper
+```
+
+#### 3. Grant Replay Attack Simulation (`--replay`)
+Demonstrates live single-use grant/nonce rejection when an attacker attempts to re-submit an already consumed grant:
+```bash
+cargo run -p quickstart-standalone -- --replay
+```
 
 ### Expected Output
+
+<details open>
+<summary><b>1. Happy Path Output</b></summary>
 
 ```
 =====================================================
@@ -59,15 +72,52 @@ cargo run -p quickstart-standalone
 ✅ Standalone execution completed successfully!
 =====================================================
 ```
+</details>
+
+<details>
+<summary><b>2. Argument Tampering Simulation Output (<code>--tamper</code>)</b></summary>
+
+```
+=====================================================
+🛡️ Trust Gateway Attack Simulation: Argument Tampering
+=====================================================
+📥 1. Received ProposedAction: tool='mock_refund'
+⚖️ 2. Policy Decision: approved=true, reason='Action permitted under default policy'
+🔑 3. Issued ExecutionGrant: id='grant_action-demo-001', input_hash='38c23c59...'
+⚠️  Simulating tampered args: amount 50.00 → 5000.00
+⚡ 4. Execution REJECTED: Input hash mismatch: grant claimed 38c23c59..., computed a91f2e04...
+🚫 Executor refused to run — grant was cryptographically bound to different arguments.
+=====================================================
+🛡️ Tamper attack successfully BLOCKED by cryptographic input binding!
+=====================================================
+```
+</details>
+
+<details>
+<summary><b>3. Grant Replay Simulation Output (<code>--replay</code>)</b></summary>
+
+```
+=====================================================
+🛡️ Trust Gateway Attack Simulation: Grant Replay Attack
+=====================================================
+📥 1. Received ProposedAction: tool='mock_refund'
+⚖️ 2. Policy Decision: approved=true, reason='Action permitted under default policy'
+🔑 3. Issued ExecutionGrant: id='grant_action-demo-001', input_hash='38c23c59...'
+⚡ 4a. Initial Execution Succeeded! status=Succeeded, duration=1ms (Grant consumed)
+⚠️  Simulating replay attack: Re-submitting already consumed grant (grant_id='grant_action-demo-001')
+⚡ 4b. Execution REJECTED: Replay attack blocked: grant_id 'grant_action-demo-001' was already consumed
+🚫 Executor refused to run — grant nonce/JTI was already consumed.
+=====================================================
+🛡️ Replay attack successfully BLOCKED by single-use grant nonce!
+=====================================================
+```
+</details>
 
 ### What Just Happened?
 
-1. An AI agent **proposed** a refund action with specific arguments
-2. The **policy engine** evaluated the action against `policy.toml` rules and approved it
-3. The gateway **minted** a cryptographic `ExecutionGrant` JWT, binding the exact arguments via SHA-256 `input_hash`
-4. The executor **verified** the grant signature, checked the input hash, then executed — redacting PII from the output
-
-If the agent had tampered with the arguments after approval, step 4 would have **rejected** the execution.
+1. **Happy Path**: An AI agent proposed a refund action; policy approved it; gateway minted an Ed25519 `ExecutionGrant` binding the SHA-256 `input_hash`; executor verified the grant and output sanitized result.
+2. **Argument Tampering (`--tamper`)**: An attacker altered `amount` from `50.00` to `5000.00` post-approval; executor detected `input_hash` mismatch and rejected execution.
+3. **Grant Replay (`--replay`)**: An attacker attempted to re-submit a previously consumed grant; executor checked single-use nonce/JTI and rejected the replay.
 
 ---
 

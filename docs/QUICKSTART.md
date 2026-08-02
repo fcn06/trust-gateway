@@ -124,41 +124,35 @@ Expected: the CLI confirms the grant's Ed25519 signature and input hash are vali
 
 ## Run the Standalone Demo
 
+### 1. Happy Path Demo
 ```bash
-make quickstart
-# or: cargo run -p quickstart-standalone
+cargo run -p quickstart-standalone
+# or: make quickstart
 ```
 
-Expected output:
-
+### 2. Argument Tampering Attack Simulation (`--tamper`)
+Demonstrates live rejection by the executor when an attacker tampers with action parameters after grant issuance:
+```bash
+cargo run -p quickstart-standalone -- --tamper
 ```
-=====================================================
-🛡️ Trust Gateway Standalone Control Flow Quickstart
-=====================================================
-📥 1. Received ProposedAction: tool='mock_refund'
-⚖️ 2. Policy Decision: approved=true, reason='Action permitted under default policy'
-🔑 3. Issued ExecutionGrant: id='grant_action-demo-001', input_hash='38c23c59...'
-⚡ 4. Execution Result: status=Succeeded, duration=5ms
-🔒 5. Sanitized Output:
-{
-  "account_email": "[REDACTED]",
-  "amount": "50.00",
-  "status": "refund_processed"
-}
-=====================================================
-✅ Standalone execution completed successfully!
-=====================================================
+
+### 3. Grant Replay Attack Simulation (`--replay`)
+Demonstrates live single-use grant/nonce rejection when an attacker attempts to re-submit an already consumed grant:
+```bash
+cargo run -p quickstart-standalone -- --replay
 ```
 
 **What this demonstrates:**
 
-| Step | What Happened |
+| Mode / Step | What Happened |
 |---|---|
 | 📥 Step 1 | An AI agent proposed a `mock_refund` action with specific arguments |
-| ⚖️ Step 2 | The policy engine evaluated the action against rules in `config/policy.standalone.toml` |
+| ⚖️ Step 2 | The policy engine evaluated the action against policy rules |
 | 🔑 Step 3 | A cryptographic `ExecutionGrant` was minted, binding the exact arguments via SHA-256 hash |
 | ⚡ Step 4 | The executor verified the grant signature and input hash, then executed |
 | 🔒 Step 5 | PII (email addresses) was automatically redacted from the output |
+| ⚠️ `--tamper` | Parameter tampering post-approval is rejected by executor due to `input_hash` mismatch |
+| ⚠️ `--replay` | Re-submitting an already consumed grant is rejected by executor due to single-use nonce/JTI |
 
 ---
 

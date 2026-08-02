@@ -18,6 +18,23 @@ pub struct OAuthCallbackParams {
     pub state: String, // Contains tenant_id
 }
 
+fn get_oauth_secret(key: &str) -> String {
+    if let Some(sec) = identity_context::load_secret(key) {
+        let s = sec.expose_secret().trim();
+        if !s.is_empty() {
+            return s.to_string();
+        }
+    }
+    let key_lower = key.to_lowercase();
+    if let Some(sec) = identity_context::load_secret(&key_lower) {
+        let s = sec.expose_secret().trim();
+        if !s.is_empty() {
+            return s.to_string();
+        }
+    }
+    std::env::var(key).unwrap_or_default().trim().to_string()
+}
+
 /// GET /oauth/{provider_id}/authorize/{tenant_id} — Redirect to OAuth provider consent screen.
 pub async fn provider_authorize(
     State(state): State<Arc<AppState>>,
@@ -30,7 +47,7 @@ pub async fn provider_authorize(
         )
     })?;
 
-    let client_id = std::env::var(&provider.client_id_env).unwrap_or_default();
+    let client_id = get_oauth_secret(&provider.client_id_env);
     if client_id.is_empty() {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
@@ -38,21 +55,21 @@ pub async fn provider_authorize(
         ));
     }
 
-    let redirect_uri = std::env::var(format!("{}_REDIRECT_URI", provider_id.to_uppercase()))
-        .unwrap_or_else(|_| {
-            if let Ok(google_uri) = std::env::var("GOOGLE_REDIRECT_URI") {
-                if let Some(pos) = google_uri.find("/oauth/google/callback") {
-                    return format!("{}/oauth/{}/callback", &google_uri[..pos], provider_id);
-                }
+    let redirect_uri_env_key = format!("{}_REDIRECT_URI", provider_id.to_uppercase());
+    let mut redirect_uri = get_oauth_secret(&redirect_uri_env_key);
+    if redirect_uri.is_empty() {
+        let google_uri = get_oauth_secret("GOOGLE_REDIRECT_URI");
+        if !google_uri.is_empty() {
+            if let Some(pos) = google_uri.find("/oauth/google/callback") {
+                redirect_uri = format!("{}/oauth/{}/callback", &google_uri[..pos], provider_id);
             }
-            format!(
-                "{}/oauth/{}/callback",
-                identity_context::load_secret("CONNECTOR_MCP_URL")
-                    .map(|s| s.expose_secret().to_string())
-                    .unwrap_or_else(|| "http://localhost:3050".to_string()),
-                provider_id
-            )
-        });
+        }
+    }
+    if redirect_uri.is_empty() {
+        let base = get_oauth_secret("CONNECTOR_MCP_URL");
+        let base_url = if base.is_empty() { "http://localhost:3050".to_string() } else { base };
+        redirect_uri = format!("{}/oauth/{}/callback", base_url, provider_id);
+    }
 
     let scopes = provider.scopes.join(" ");
 
@@ -89,24 +106,24 @@ pub async fn provider_callback(
         )
     })?;
 
-    let client_id = std::env::var(&provider.client_id_env).unwrap_or_default();
-    let client_secret = std::env::var(&provider.client_secret_env).unwrap_or_default();
+    let client_id = get_oauth_secret(&provider.client_id_env);
+    let client_secret = get_oauth_secret(&provider.client_secret_env);
 
-    let redirect_uri = std::env::var(format!("{}_REDIRECT_URI", provider_id.to_uppercase()))
-        .unwrap_or_else(|_| {
-            if let Ok(google_uri) = std::env::var("GOOGLE_REDIRECT_URI") {
-                if let Some(pos) = google_uri.find("/oauth/google/callback") {
-                    return format!("{}/oauth/{}/callback", &google_uri[..pos], provider_id);
-                }
+    let redirect_uri_env_key = format!("{}_REDIRECT_URI", provider_id.to_uppercase());
+    let mut redirect_uri = get_oauth_secret(&redirect_uri_env_key);
+    if redirect_uri.is_empty() {
+        let google_uri = get_oauth_secret("GOOGLE_REDIRECT_URI");
+        if !google_uri.is_empty() {
+            if let Some(pos) = google_uri.find("/oauth/google/callback") {
+                redirect_uri = format!("{}/oauth/{}/callback", &google_uri[..pos], provider_id);
             }
-            format!(
-                "{}/oauth/{}/callback",
-                identity_context::load_secret("CONNECTOR_MCP_URL")
-                    .map(|s| s.expose_secret().to_string())
-                    .unwrap_or_else(|| "http://localhost:3050".to_string()),
-                provider_id
-            )
-        });
+        }
+    }
+    if redirect_uri.is_empty() {
+        let base = get_oauth_secret("CONNECTOR_MCP_URL");
+        let base_url = if base.is_empty() { "http://localhost:3050".to_string() } else { base };
+        redirect_uri = format!("{}/oauth/{}/callback", base_url, provider_id);
+    }
 
     // Exchange authorization code for tokens
     let client = state.http_client.clone();

@@ -142,7 +142,8 @@ impl Runtime {
                                 });
                             }
                             Err(e) => {
-                                tracing::error!("❌ Error reading message: {}", e);
+                                tracing::warn!("⚠️ Message stream error: {} — reconnecting consumer...", e);
+                                break;
                             }
                         }
                     }

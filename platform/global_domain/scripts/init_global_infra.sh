@@ -23,8 +23,7 @@ fi
 
 # Check if nats CLI is installed
 if ! command -v nats &> /dev/null; then
-    echo "❌ 'nats' CLI not found. Please install it:"
-    echo "   curl -sf https://binaries.nats.dev/nats-io/natscli/nats@latest | sh"
+    echo "❌ 'nats' CLI not found. Please install it from https://github.com/nats-io/natscli/releases"
     exit 1
 fi
 

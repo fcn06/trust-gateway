@@ -106,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(err) => {
-                println!("⚡ 4. Execution REJECTED: {}", err);
+                println!("⚡ 4. Execution REJECTED: {err}");
                 println!("🚫 Executor refused to run — grant was cryptographically bound to different arguments.");
             }
         }
@@ -137,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
             Err(err) => {
-                println!("⚡ 4b. Execution REJECTED: {}", err);
+                println!("⚡ 4b. Execution REJECTED: {err}");
                 println!("🚫 Executor refused to run — grant nonce/JTI was already consumed.");
             }
         }

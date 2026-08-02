@@ -53,6 +53,12 @@ curl -X POST http://localhost:3060/v1/approvals/ACTION_ID/decision \
   -d '{"approved": false, "reviewer": "admin@example.com", "reason": "Amount too high"}'
 ```
 
+### Tier 2 WebAuthn Session Enforcement
+
+For actions configured with `tier = "tier2_re_authenticate"`, the Trust Gateway enforces that the approver's session carries hardware-backed biometric verification (`AuthLevel::Level5WebAuthn` or `auth_method: "webauthn"`). 
+
+If an approval request for a Tier 2 action is submitted with a standard session (`auth_level < 5`), the Gateway rejects the request with `403 Forbidden`. Successful WebAuthn approvals record `resolution_method = "webauthn_session"` in the audit record.
+
 ---
 
 ## Integration

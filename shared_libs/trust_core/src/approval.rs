@@ -111,7 +111,7 @@ pub struct ApprovalRecord {
     pub status: ApprovalStatus,
     /// Who approved or denied (DID), if resolved.
     pub resolved_by: Option<String>,
-    /// Method used to resolve (click, re-auth, openid4vp).
+    /// Method used to resolve (portal_click, portal_direct, webauthn_session, vp_session, auto_expired).
     pub resolution_method: Option<String>,
     /// When the request was created.
     pub requested_at: chrono::DateTime<chrono::Utc>,
@@ -146,7 +146,7 @@ pub enum ApprovalStatus {
 pub struct ApprovalResult {
     /// Who approved or denied.
     pub resolved_by: String,
-    /// How (click, re-auth, openid4vp).
+    /// How (portal_click, portal_direct, webauthn_session, vp_session, auto_expired).
     pub resolution_method: String,
     /// Optional additional notes from the approver.
     pub notes: Option<String>,

@@ -60,9 +60,14 @@ pub async fn run_decision_listener(state: Arc<GatewayState>) {
             .unwrap_or("portal_user")
             .to_string();
 
+        let resolution_method = payload["resolution_method"]
+            .as_str()
+            .unwrap_or("portal_click")
+            .to_string();
+
         let result = ApprovalResult {
             resolved_by: resolved_by.clone(),
-            resolution_method: "portal_click".to_string(),
+            resolution_method,
             notes: None,
             resolved_at: chrono::Utc::now(),
         };

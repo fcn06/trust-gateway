@@ -19,13 +19,27 @@ This example runs the entire Trust Gateway control flow **in-process** without N
 
 ## Run
 
+### 1. Happy Path Demo
 ```bash
-make quickstart
-# or: cargo run -p quickstart-standalone
+cargo run -p quickstart-standalone
+# or: make quickstart
+```
+
+### 2. Argument Tampering Attack Simulation (`--tamper` or `--simulate-attack`)
+Demonstrates live rejection by the executor when an attacker tampers with action parameters after grant issuance:
+```bash
+cargo run -p quickstart-standalone -- --tamper
+```
+
+### 3. Grant Replay Attack Simulation (`--replay`)
+Demonstrates live single-use grant/nonce rejection when an attacker attempts to re-submit an already consumed grant:
+```bash
+cargo run -p quickstart-standalone -- --replay
 ```
 
 ## Expected Output
 
+### Happy Path
 ```
 =====================================================
 🛡️ Trust Gateway Standalone Control Flow Quickstart
@@ -45,6 +59,39 @@ make quickstart
 =====================================================
 ```
 
+### Tamper Simulation (`--tamper`)
+```
+=====================================================
+🛡️ Trust Gateway Attack Simulation: Argument Tampering
+=====================================================
+📥 1. Received ProposedAction: tool='mock_refund'
+⚖️ 2. Policy Decision: approved=true, reason='Action permitted under default policy'
+🔑 3. Issued ExecutionGrant: id='grant_action-demo-001', input_hash='38c23c59...'
+⚠️  Simulating tampered args: amount 50.00 → 5000.00
+⚡ 4. Execution REJECTED: Input hash mismatch: grant claimed 38c23c59..., computed a91f2e04...
+🚫 Executor refused to run — grant was cryptographically bound to different arguments.
+=====================================================
+🛡️ Tamper attack successfully BLOCKED by cryptographic input binding!
+=====================================================
+```
+
+### Replay Simulation (`--replay`)
+```
+=====================================================
+🛡️ Trust Gateway Attack Simulation: Grant Replay Attack
+=====================================================
+📥 1. Received ProposedAction: tool='mock_refund'
+⚖️ 2. Policy Decision: approved=true, reason='Action permitted under default policy'
+🔑 3. Issued ExecutionGrant: id='grant_action-demo-001', input_hash='38c23c59...'
+⚡ 4a. Initial Execution Succeeded! status=Succeeded, duration=1ms (Grant consumed)
+⚠️  Simulating replay attack: Re-submitting already consumed grant (grant_id='grant_action-demo-001')
+⚡ 4b. Execution REJECTED: Replay attack blocked: grant_id 'grant_action-demo-001' was already consumed
+🚫 Executor refused to run — grant nonce/JTI was already consumed.
+=====================================================
+🛡️ Replay attack successfully BLOCKED by single-use grant nonce!
+=====================================================
+```
+
 ## Key Concepts Demonstrated
 
 | Output Line | Concept |
@@ -54,3 +101,6 @@ make quickstart
 | `🔑 3. Issued ExecutionGrant` | Cryptographic binding — grant includes `input_hash` |
 | `⚡ 4. Execution Result` | Executors verify — grant is checked before execution |
 | `🔒 5. Sanitized Output: [REDACTED]` | PII scrubbing — sensitive data is automatically removed |
+| `⚠️ Simulating tampered args` | Input binding security — tampering invalidates execution |
+| `⚠️ Simulating replay attack` | Replay protection — grants cannot be reused |
+

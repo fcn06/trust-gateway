@@ -117,6 +117,7 @@ pub async fn get_approval_handler(
 /// `POST /v1/approvals/{approval_id}/decision` — Submit decision.
 pub async fn submit_decision_handler(
     State(state): State<Arc<GatewayState>>,
+    headers: axum::http::HeaderMap,
     Path(approval_id): Path<String>,
     Json(body): Json<DecisionRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
@@ -152,12 +153,52 @@ pub async fn submit_decision_handler(
         _ => {}
     }
 
+    // Optional auth verification if Authorization header is present
+    let opt_verified = state
+        .token_validator
+        .validate(&headers, &state.jwt_secret)
+        .await
+        .ok();
+
+    // Enforce Tier 2 Re-authentication check
+    if record.tier == trust_core::approval::ApprovalTier::Tier2ReAuthenticate {
+        let is_webauthn = opt_verified.as_ref().map_or(false, |v| {
+            v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
+                || v.auth_method == trust_core::actor::AuthMethod::WebAuthn
+        });
+
+        if !is_webauthn {
+            tracing::warn!(
+                "🚫 Tier 2 approval rejected for {}: session auth level is below Level5WebAuthn",
+                approval_id
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+    }
+
+    let resolution_method = match &opt_verified {
+        Some(v)
+            if v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
+                || v.auth_method == trust_core::actor::AuthMethod::WebAuthn =>
+        {
+            "webauthn_session".to_string()
+        }
+        Some(v)
+            if v.auth_level >= trust_core::actor::AuthLevel::Level4Verified
+                || v.auth_method == trust_core::actor::AuthMethod::VpEdDsa =>
+        {
+            "vp_session".to_string()
+        }
+        _ => "portal_click".to_string(),
+    };
+
     let result = ApprovalResult {
         resolved_by: body
             .actor_did
             .clone()
+            .or_else(|| opt_verified.as_ref().map(|v| v.requester_did.clone()))
             .unwrap_or_else(|| "unknown".to_string()),
-        resolution_method: "portal_click".to_string(), // In reality we'd pull from token claims
+        resolution_method,
         notes: body.reason.clone(),
         resolved_at: chrono::Utc::now(),
     };
@@ -293,7 +334,7 @@ pub async fn approve_escalation_handler(
         correlation_id: None,
     };
 
-    process_decision(state, id, decision).await
+    process_decision(state, id, decision, Some(&verified)).await
 }
 
 /// `POST /api/escalation_requests/{id}/deny` — Portal-compatible deny handler.
@@ -314,7 +355,7 @@ pub async fn deny_escalation_handler(
         correlation_id: None,
     };
 
-    process_decision(state, id, decision).await
+    process_decision(state, id, decision, Some(&verified)).await
 }
 
 /// Common logic for processing a decision and notifying the Host.
@@ -322,6 +363,7 @@ async fn process_decision(
     state: Arc<GatewayState>,
     approval_id: String,
     body: DecisionRequest,
+    verified: Option<&trust_auth::IdentityContext>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Fetch existing record
     let record = match state.approval_store.get(&approval_id).await {
@@ -335,12 +377,45 @@ async fn process_decision(
         return Ok(Json(serde_json::json!({ "status": "already_processed" })));
     }
 
+    // Enforce Tier 2 Re-authentication check
+    if record.tier == trust_core::approval::ApprovalTier::Tier2ReAuthenticate {
+        let is_webauthn = verified.map_or(false, |v| {
+            v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
+                || v.auth_method == trust_core::actor::AuthMethod::WebAuthn
+        });
+
+        if !is_webauthn {
+            tracing::warn!(
+                "🚫 Tier 2 escalation decision rejected for {}: session auth level is below Level5WebAuthn",
+                approval_id
+            );
+            return Err(StatusCode::FORBIDDEN);
+        }
+    }
+
+    let resolution_method = match verified {
+        Some(v)
+            if v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
+                || v.auth_method == trust_core::actor::AuthMethod::WebAuthn =>
+        {
+            "webauthn_session".to_string()
+        }
+        Some(v)
+            if v.auth_level >= trust_core::actor::AuthLevel::Level4Verified
+                || v.auth_method == trust_core::actor::AuthMethod::VpEdDsa =>
+        {
+            "vp_session".to_string()
+        }
+        _ => "portal_direct".to_string(),
+    };
+
     let result = ApprovalResult {
         resolved_by: body
             .actor_did
             .clone()
+            .or_else(|| verified.map(|v| v.requester_did.clone()))
             .unwrap_or_else(|| "unknown".to_string()),
-        resolution_method: "portal_direct".to_string(),
+        resolution_method: resolution_method.clone(),
         notes: body.reason.clone(),
         resolved_at: chrono::Utc::now(),
     };
@@ -375,7 +450,7 @@ async fn process_decision(
         "status": if new_status == ApprovalStatus::Approved { "APPROVED" } else { "DENIED" },
         "resolved_by": body.actor_did,
         "owner_did": record.action_request.actor.owner_did,
-        "resolution_method": "portal_direct",
+        "resolution_method": resolution_method,
     });
 
     if let Err(e) = state
@@ -387,9 +462,10 @@ async fn process_decision(
     }
 
     tracing::info!(
-        "✅ Processed approval decision: {} → {:?} (notified Host)",
+        "✅ Processed approval decision: {} → {:?} (notified Host, resolution_method: {})",
         approval_id,
-        new_status
+        new_status,
+        resolution_method
     );
 
     Ok(Json(serde_json::json!({
@@ -465,3 +541,75 @@ pub async fn action_status_handler(
         "error": "No action or approval record found for this action_id",
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use identity_context::models::{IdentityContext, SourceContext, SourceType, TransportKind};
+    use trust_core::actor::{AuthLevel, AuthMethod};
+    use trust_core::approval::ApprovalTier;
+
+    fn make_identity(auth_level: AuthLevel, auth_method: AuthMethod) -> IdentityContext {
+        IdentityContext {
+            tenant_id: "test-tenant".to_string(),
+            owner_did: "did:twin:owner".to_string(),
+            requester_did: "did:twin:user".to_string(),
+            session_jwt: "fake-jwt".to_string(),
+            auth_level,
+            auth_method,
+            oauth_scopes: vec![],
+            source: SourceContext {
+                source_type: SourceType::HttpApi,
+                source_id: "test".to_string(),
+                transport: TransportKind::Http,
+                correlation_id: "test-corr".to_string(),
+                remote_addr: None,
+            },
+        }
+    }
+
+    #[test]
+    fn test_tier2_webauthn_validation() {
+        let level3_ident = make_identity(AuthLevel::Level3Session, AuthMethod::HmacJwt);
+        let level5_ident = make_identity(AuthLevel::Level5WebAuthn, AuthMethod::WebAuthn);
+
+        // Tier 2 re-auth check for Level 3 session -> should fail
+        let is_level3_webauthn = level3_ident.auth_level >= AuthLevel::Level5WebAuthn
+            || level3_ident.auth_method == AuthMethod::WebAuthn;
+        assert!(!is_level3_webauthn);
+
+        // Tier 2 re-auth check for Level 5 WebAuthn session -> should pass
+        let is_level5_webauthn = level5_ident.auth_level >= AuthLevel::Level5WebAuthn
+            || level5_ident.auth_method == AuthMethod::WebAuthn;
+        assert!(is_level5_webauthn);
+    }
+
+    #[test]
+    fn test_resolution_method_mapping() {
+        let level3_ident = make_identity(AuthLevel::Level3Session, AuthMethod::HmacJwt);
+        let level4_ident = make_identity(AuthLevel::Level4Verified, AuthMethod::VpEdDsa);
+        let level5_ident = make_identity(AuthLevel::Level5WebAuthn, AuthMethod::WebAuthn);
+
+        let method_for = |ident: Option<&IdentityContext>| match ident {
+            Some(v)
+                if v.auth_level >= AuthLevel::Level5WebAuthn
+                    || v.auth_method == AuthMethod::WebAuthn =>
+            {
+                "webauthn_session".to_string()
+            }
+            Some(v)
+                if v.auth_level >= AuthLevel::Level4Verified
+                    || v.auth_method == AuthMethod::VpEdDsa =>
+            {
+                "vp_session".to_string()
+            }
+            _ => "portal_direct".to_string(),
+        };
+
+        assert_eq!(method_for(None), "portal_direct");
+        assert_eq!(method_for(Some(&level3_ident)), "portal_direct");
+        assert_eq!(method_for(Some(&level4_ident)), "vp_session");
+        assert_eq!(method_for(Some(&level5_ident)), "webauthn_session");
+    }
+}
+

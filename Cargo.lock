@@ -4695,6 +4695,7 @@ dependencies = [
  "async-trait",
  "serde",
  "serde_json",
+ "tokio",
  "trust-canonical",
  "trust-egress",
  "trust-executor-sdk",

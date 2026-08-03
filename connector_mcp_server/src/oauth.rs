@@ -67,8 +67,12 @@ pub async fn provider_authorize(
     }
     if redirect_uri.is_empty() {
         let base = get_oauth_secret("CONNECTOR_MCP_URL");
-        let base_url = if base.is_empty() { "http://localhost:3050".to_string() } else { base };
-        redirect_uri = format!("{}/oauth/{}/callback", base_url, provider_id);
+        let base_url = if base.is_empty() {
+            "http://localhost:3050".to_string()
+        } else {
+            base
+        };
+        redirect_uri = format!("{base_url}/oauth/{provider_id}/callback");
     }
 
     let scopes = provider.scopes.join(" ");
@@ -121,8 +125,12 @@ pub async fn provider_callback(
     }
     if redirect_uri.is_empty() {
         let base = get_oauth_secret("CONNECTOR_MCP_URL");
-        let base_url = if base.is_empty() { "http://localhost:3050".to_string() } else { base };
-        redirect_uri = format!("{}/oauth/{}/callback", base_url, provider_id);
+        let base_url = if base.is_empty() {
+            "http://localhost:3050".to_string()
+        } else {
+            base
+        };
+        redirect_uri = format!("{base_url}/oauth/{provider_id}/callback");
     }
 
     // Exchange authorization code for tokens

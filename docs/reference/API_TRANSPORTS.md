@@ -30,4 +30,10 @@ For REST and MCP integrations, the Gateway returns the `ExecutionGrant` JWT to t
 Agent → Gateway → Agent (receives grant) → Executor Host → Target API
 ```
 
-> **Note**: Managed dispatch is the recommended production mode because the agent never possesses a bearer capability.
+> **Security Note on Portable Grants**:
+> - **Zero SaaS Credentials**: Portable grants contain zero SaaS API keys, DB credentials, or standing authorities.
+> - **Parameter Bound**: Grants are cryptographically bound to exact action parameters via SHA-256 `input_hash`. Tampering with any argument invalidates the grant.
+> - **Short TTL & Single-Use**: Grants carry a short lifetime (e.g. 30-second TTL) and are strictly single-use (`jti` nonce tracking).
+> - **Protected Executor Boundary**: Executors remain network-isolated and protected by their own transport authentication.
+> - Managed dispatch remains the recommended default for high-security environments.
+

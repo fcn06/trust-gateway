@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────
+# Trust Gateway Policy Configuration
+# ─────────────────────────────────────────────────────────────
+
+[[rules]]
+id = "demo-auto-allow-stripe-refund"
+priority = 5
+action_names = ["stripe_refund", "mock_refund"]
+effect = "allow"
+
+[[rules]]
+id = "read-actions-auto-allow"
+priority = 10
+operation_kinds = ["read"]
+effect = "allow"
+
+[[rules]]
+id = "claw-native-tools-allow"
+priority = 15
+action_names = ["claw_hello_world", "claw_weather", "read_skill", "claw_extract_content_from_url"]
+effect = "allow"
+
+[[rules]]
+id = "mcp-search-allow"
+priority = 16
+action_names = ["vp_search"]
+categories = ["vp", "search"]
+effect = "allow"
+
+[[rules]]
+id = "calendar-create-needs-approval"
+priority = 20
+action_names = ["google_calendar_create_event"]
+effect = "require_approval"
+tier = "tier1"
+reason = "Calendar event creation requires portal approval"
+
+[[rules]]
+id = "shopify-order-update"
+priority = 21
+action_names = ["shopify_order_update"]
+effect = "require_approval"
+tier = "tier1"
+reason = "Order modifications require portal approval"
+
+[[rules]]
+id = "refund-above-100eur"
+priority = 30
+action_names = ["shopify_order_refund_create"]
+min_amount = "100.00 EUR"
+effect = "require_approval"
+tier = "tier2"
+reason = "Refunds above €100 require re-authentication"

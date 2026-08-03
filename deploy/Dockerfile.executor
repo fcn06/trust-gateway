@@ -1,0 +1,38 @@
+# Stage 1: Build static musl executor_host binary
+FROM rust:1.88-slim-bookworm AS builder
+
+WORKDIR /usr/src/trust-gateway
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    musl-tools \
+    binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add x86_64-unknown-linux-musl
+
+COPY . .
+
+RUN RUSTFLAGS="-C strip=symbols" cargo build --release --target x86_64-unknown-linux-musl -p executor_host
+
+# Stage 2: Minimal Alpine executor runtime image
+FROM alpine:3.20
+
+RUN apk add --no-cache \
+    ca-certificates \
+    bash \
+    python3 \
+    curl \
+    jq
+
+WORKDIR /usr/src/trust-gateway
+
+COPY --from=builder /usr/src/trust-gateway/target/x86_64-unknown-linux-musl/release/executor_host /usr/local/bin/executor_host
+COPY --from=builder /usr/src/trust-gateway/native_tools ./native_tools
+
+ENV EXECUTOR_PROFILE=native-tool
+ENV LIANXI_ENV=development
+
+ENTRYPOINT ["/usr/local/bin/executor_host"]

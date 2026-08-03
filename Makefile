@@ -1,7 +1,7 @@
 # trust-gateway Makefile
 # Convenience targets for building, testing, and running trust-gateway.
 
-.PHONY: all check test quickstart conformance audit lint doctor
+.PHONY: all check test quickstart demo-docker conformance audit lint doctor
 
 all: check test conformance
 
@@ -9,6 +9,10 @@ all: check test conformance
 check:
 	@echo "🔍 Checking workspace compilation..."
 	cargo check --workspace
+
+demo-docker:
+	@echo "🐳 Building quickstart demo Docker image..."
+	docker build -t trust-gateway-demo -f deploy/Dockerfile.demo .
 
 # ── Test ───────────────────────────────────────────────
 test:

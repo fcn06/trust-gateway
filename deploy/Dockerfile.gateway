@@ -1,0 +1,38 @@
+# Stage 1: Build static musl gateway binary
+FROM rust:1.88-slim-bookworm AS builder
+
+WORKDIR /usr/src/trust-gateway
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    build-essential \
+    musl-tools \
+    binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rustup target add x86_64-unknown-linux-musl
+
+COPY . .
+
+RUN RUSTFLAGS="-C strip=symbols" cargo build --release --target x86_64-unknown-linux-musl -p gateway
+
+# Stage 2: Minimal Alpine gateway image (~10-15 MB)
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /usr/src/trust-gateway
+
+COPY --from=builder /usr/src/trust-gateway/target/x86_64-unknown-linux-musl/release/trust_gateway /usr/local/bin/trust_gateway
+COPY --from=builder /usr/src/trust-gateway/config ./config
+COPY --from=builder /usr/src/trust-gateway/shared_libs/trust_core/snapshots ./shared_libs/trust_core/snapshots
+
+ENV POLICY_PATH=config/policy.toml
+ENV AGENTS_PATH=config/agents.toml
+ENV GATEWAY_LISTEN=0.0.0.0:3060
+ENV LIANXI_ENV=development
+
+EXPOSE 3060
+
+ENTRYPOINT ["/usr/local/bin/trust_gateway"]

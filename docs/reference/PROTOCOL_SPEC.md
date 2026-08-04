@@ -22,37 +22,49 @@ It separates reasoning intelligence from execution authority by requiring agents
 
 ---
 
-## `ExecutionGrant` Claims Schema
+## `ExecutionGrant` Core Claims
 
-An `ExecutionGrant` is an Ed25519-signed JWT token containing the following required normative claims:
+An `ExecutionGrant` is a short-lived Ed25519-signed JWT. The protocol requires the following core claims:
 
 ```json
 {
   "iss": "trust-gateway",
   "aud": "executor-host",
   "sub": "agent-001",
-  "jti": "grant-550e8400-e29b-41d4-a716-446655440000",
-  "exp": 1740000030,
+  "iat": 1740000000,
   "nbf": 1740000000,
+  "exp": 1740000030,
+  "jti": "grant-550e8400-e29b-41d4-a716-446655440000",
   "tenant_id": "tenant_demo",
-  "tool_id": "io.example.refund@v1",
-  "input_hash": "sha256:38c23c59a35e4e7e6a7c1b506692df830c25a7536d506886e3067e2a9b3a1a67",
-  "policy_fingerprint": "sha256:8f4e2c1a..."
+  "tool_name": "io.example.refund@v1",
+  "input_hash": "sha256:<64-hex-character-digest>",
+  "policy_fingerprint": "sha256:<64-hex-character-digest>"
 }
 ```
+
+The grant authorizes one execution of one versioned tool with exactly one canonical argument set. Executors must reject expired grants, invalid signatures, reused `jti` values, mismatched tool identities, or mismatched argument hashes.
 
 ### Claim Definitions
 
 * `iss`: Issuer identifier (must equal expected Gateway issuer URI).
 * `aud`: Audience identifier (must equal target Executor host domain).
 * `sub`: Subject identifier (agent or user initiating proposal).
-* `jti`: Unique single-use grant identifier (UUID v4) for replay prevention.
-* `exp`: Unix timestamp defining grant expiration (maximum recommended TTL: 30 seconds).
+* `iat`: Unix timestamp (seconds) when the grant was issued.
 * `nbf`: Unix timestamp before which the grant is invalid.
+* `exp`: Unix timestamp defining grant expiration (maximum recommended TTL: 30 seconds).
+* `jti`: Unique single-use grant identifier (UUID v4) for replay prevention.
 * `tenant_id`: Multi-tenant isolation context.
-* `tool_id`: Fully-qualified identifier of the target tool and version.
+* `tool_name`: Authorized target tool or action name (populated from `action_name` in HTTP proposal).
 * `input_hash`: Hex-encoded SHA-256 digest of RFC 8785 canonicalized input arguments.
 * `policy_fingerprint`: Hash of the evaluated policy snapshot for auditing.
+
+### Field Naming Conventions & Transport Mapping
+
+| Layer / Context | Field Name | Purpose & Example |
+| :--- | :--- | :--- |
+| **HTTP REST Payload** (`POST /v1/actions/propose`) | `action_name` | Ingress action/tool name submitted by agent: `"action_name": "claw_hello_world"` |
+| **Internal Domain Model** (`ProposedAction`) | `tool_name` | Internal tool name field in Rust domain model: `tool_name: "claw_hello_world"` |
+| **`ExecutionGrant` JWT Claim** | `tool_name` | Signed JWT claim bound to signature: `"tool_name": "claw_hello_world"` |
 
 ---
 
@@ -76,7 +88,7 @@ An Executor **MUST** reject execution if any of the following conditions fail:
 1. **Signature Verification**: The Ed25519 signature fails verification against the Gateway public key.
 2. **Class Separation**: Token `typ` or `token_class` is not `execution_grant`.
 3. **Expiration**: Current UTC time $> \text{exp}$ or $< \text{nbf}$.
-4. **Tool Binding**: `tool_id` in grant does not match requested target tool.
+4. **Tool Binding**: `tool_name` in grant does not match requested target tool.
 5. **Argument Integrity**: SHA-256 digest of canonicalized execution arguments does not equal `input_hash`.
 6. **Replay Check**: `jti` exists in the consumed single-use nonce store.
 

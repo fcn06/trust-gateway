@@ -9,7 +9,7 @@
 
 AI agents should be able to propose actions without automatically possessing the authority to execute them.
 
-**Trust Gateway** sits between AI agents and side-effecting target tools (SaaS APIs, databases, native scripts). It evaluates proposed actions against deterministic policy rules and issues a short-lived, Ed25519-signed **ExecutionGrant** cryptographically bound to exactly one tool and one set of canonical parameters. 
+**Trust Gateway** sits between AI agents and side-effecting tools and systems (SaaS APIs, databases, native scripts). It evaluates proposed actions against deterministic policy rules and issues a short-lived, Ed25519-signed **ExecutionGrant** cryptographically bound to exactly one tool and one set of canonical parameters. 
 
 Executors independently verify that grant before performing any mutation.
 
@@ -46,26 +46,30 @@ Executors independently verify that grant before performing any mutation.
 
 The **Execution Authorization Protocol** defines normative authorization contracts independent of specific runtime components:
 * **Normative Schemas**: `ProposedAction`, `PolicyDecision`, `ExecutionGrant`, `GrantedAction`, `ExecutionResult`.
-* **Canonicalization & Hashing**: RFC 8785 canonical JSON key-sorting and SHA-256 parameter hashing (`input_hash`).
+* **Canonicalization & Hashing**: Deterministic canonical JSON serialization with lexicographically sorted object keys followed by SHA-256 hashing (`input_hash`).
 * **Verification Rules**: Ed25519 public key signature verification, single-use nonce checking (`jti`), and strict TTL expiration.
 
-### `ExecutionGrant` Claims Schema Example
+### `ExecutionGrant` Core Claims
 
-An `ExecutionGrant` is an Ed25519-signed JWT token containing the following normative claims:
+An `ExecutionGrant` is a short-lived Ed25519-signed JWT. The protocol requires the following core claims:
 
 ```json
 {
   "iss": "trust-gateway",
   "aud": "executor-host",
   "sub": "agent-001",
-  "jti": "grant-550e8400-e29b-41d4-a716-446655440000",
+  "iat": 1740000000,
+  "nbf": 1740000000,
   "exp": 1740000030,
+  "jti": "grant-550e8400-e29b-41d4-a716-446655440000",
   "tenant_id": "tenant_demo",
-  "tool_id": "io.example.refund@v1",
-  "input_hash": "sha256:38c23c59a35e4e7e6a7c1b506692df830c25a7536d506886e3067e2a9b3a1a67",
-  "policy_fingerprint": "sha256:8f4e2c1a..."
+  "tool_name": "io.example.refund@v1",
+  "input_hash": "sha256:<64-hex-character-digest>",
+  "policy_fingerprint": "sha256:<64-hex-character-digest>"
 }
 ```
+
+The grant authorizes one execution of one versioned tool with exactly one canonical argument set. Executors must reject expired grants, invalid signatures, reused `jti` values, mismatched tool identities, or mismatched argument hashes.
 
 This repository provides the official **Rust reference implementation**:
 * Reference **Gateway** policy decision point and grant issuer (`gateway/`)
@@ -152,6 +156,8 @@ docker compose -f deploy/docker-compose.yml up -d
 How does an AI agent propose an action to Trust Gateway over HTTP?
 
 > **Prerequisite**: Start the Trust Gateway server first using **Path 3 (Docker Compose)**: `docker compose -f deploy/docker-compose.yml up -d` (or run `cargo run -p gateway`). This exposes the HTTP API on port `3060`.
+>
+> **Field Naming Note**: The HTTP REST proposal payload uses `action_name` to specify the requested tool (e.g. `"action_name": "claw_hello_world"`). The Gateway populates this into internal domain models and `ExecutionGrant` JWT claims under `tool_name`.
 
 ### 1. Agent Proposes Action
 

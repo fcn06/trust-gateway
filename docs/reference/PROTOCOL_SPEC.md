@@ -65,8 +65,7 @@ To guarantee argument integrity across heterogeneous components, parameter input
 3. Floating point numbers follow standard IEEE 754 canonical formatting.
 4. The resulting string is UTF-8 encoded and hashed using SHA-256.
 
-Formally:
-$$\text{input\_hash} = \text{"sha256:"} + \text{Hex}(\text{SHA256}(\text{Canonicalize}_{\text{RFC8785}}(\text{arguments})))$$
+$$\text{input}\_\text{hash} = \text{"sha256:"} + \text{Hex}(\text{SHA256}(\text{Canonicalize}_{\text{RFC8785}}(\text{arguments})))$$
 
 ---
 

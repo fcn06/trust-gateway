@@ -5,11 +5,11 @@
 [![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2B%20Streamable-purple)](https://modelcontextprotocol.io)
 
-> **An open execution authorization protocol and gateway for AI agents.**
+> **An open-source gateway and reference implementation of an execution authorization protocol for AI agents.**
 
-AI agents should be able to propose actions without automatically receiving the authority to execute them.
+AI agents should be able to propose actions without automatically possessing the authority to execute them.
 
-**Trust Gateway** sits between AI agents and side-effecting tools (SaaS APIs, databases, native scripts). It evaluates each proposed action against deterministic policy rules and issues a short-lived, Ed25519-signed **ExecutionGrant** cryptographically bound to exactly one tool and one set of parameters. 
+**Trust Gateway** sits between AI agents and side-effecting target tools (SaaS APIs, databases, native scripts). It evaluates proposed actions against deterministic policy rules and issues a short-lived, Ed25519-signed **ExecutionGrant** cryptographically bound to exactly one tool and one set of canonical parameters. 
 
 Executors independently verify that grant before performing any mutation.
 
@@ -42,13 +42,47 @@ Executors independently verify that grant before performing any mutation.
 
 ---
 
+## 📜 Protocol vs. Reference Implementation
+
+The **Execution Authorization Protocol** defines normative authorization contracts independent of specific runtime components:
+* **Normative Schemas**: `ProposedAction`, `PolicyDecision`, `ExecutionGrant`, `GrantedAction`, `ExecutionResult`.
+* **Canonicalization & Hashing**: RFC 8785 canonical JSON key-sorting and SHA-256 parameter hashing (`input_hash`).
+* **Verification Rules**: Ed25519 public key signature verification, single-use nonce checking (`jti`), and strict TTL expiration.
+
+### `ExecutionGrant` Claims Schema Example
+
+An `ExecutionGrant` is an Ed25519-signed JWT token containing the following normative claims:
+
+```json
+{
+  "iss": "trust-gateway",
+  "aud": "executor-host",
+  "sub": "agent-001",
+  "jti": "grant-550e8400-e29b-41d4-a716-446655440000",
+  "exp": 1740000030,
+  "tenant_id": "tenant_demo",
+  "tool_id": "io.example.refund@v1",
+  "input_hash": "sha256:38c23c59a35e4e7e6a7c1b506692df830c25a7536d506886e3067e2a9b3a1a67",
+  "policy_fingerprint": "sha256:8f4e2c1a..."
+}
+```
+
+This repository provides the official **Rust reference implementation**:
+* Reference **Gateway** policy decision point and grant issuer (`gateway/`)
+* Reference **Executor Host** runner (`executor_host/`) and standalone verifier library (`verifier/`)
+* Protocol **Test Vectors** (`test-vectors/`) and **Conformance Suite** (`conformance/`)
+
+> **Transport Agnosticism**: NATS JetStream is the default transport and state backend of the reference implementation, but it is not a requirement of the authorization protocol itself.
+
+---
+
 ## 🚀 Quickstart
 
 Choose your preferred way to test and evaluate Trust Gateway:
 
 ### Path 1: Fastest — Docker Demo (No Rust toolchain required)
 
-We aimed to minimize onboarding friction and bandwidth overhead: the demo container is statically compiled against `musl` and stripped to achieve a lightweight image footprint (~5 MB download / ~18 MB uncompressed).
+The demo container is statically compiled against `musl` (~5 MB download / ~18 MB uncompressed).
 
 Build and run the standalone demonstration locally in Docker:
 
@@ -118,15 +152,11 @@ docker compose -f deploy/docker-compose.yml up -d
 How does an AI agent propose an action to Trust Gateway over HTTP?
 
 > **Prerequisite**: Start the Trust Gateway server first using **Path 3 (Docker Compose)**: `docker compose -f deploy/docker-compose.yml up -d` (or run `cargo run -p gateway`). This exposes the HTTP API on port `3060`.
->
-> **Note on Authentication Scope**: This HTTP example demonstrates the core proposal control flow. In a production environment, the Gateway verifies individual user JWTs signed by an OIDC Relying Party (RP) / Identity Provider, extracts the `user_id` claims, and enforces user-specific policy rules and multi-tenant isolation (`tenant_id`).
-
-Agents send a standardized REST payload to propose an action instead of invoking target APIs directly:
 
 ### 1. Agent Proposes Action
 
 ```bash
-# Generate a valid development session JWT (HMAC-HS256 using dev secret):
+# Generate a development session JWT (HMAC-HS256 using dev secret):
 HEADER=$(echo -n '{"alg":"HS256","typ":"JWT"}' | base64 -w0 | tr -d '=' | tr '/+' '_-')
 PAYLOAD=$(echo -n '{"sub":"agent-001","exp":1999999999,"tenant_id":"tenant_demo"}' | base64 -w0 | tr -d '=' | tr '/+' '_-')
 SECRET="dev-secret-do-not-use-in-production-1234567890"
@@ -139,14 +169,14 @@ curl -X POST http://localhost:3060/v1/actions/propose \
   -d '{
     "action_name": "claw_hello_world",
     "arguments": {
-      "message": "Hello from HackerNews"
+      "message": "Hello from agent"
     }
   }'
 ```
 
 ### 2. Gateway Execution Response
 
-The Gateway evaluates policy, mints an Ed25519 `ExecutionGrant`, dispatches execution to `executor-host` over NATS, scrubs the result, and returns the execution outcome:
+The Gateway evaluates policy, mints an Ed25519 `ExecutionGrant`, dispatches execution to `executor-host`, scrubs the result, and returns the execution outcome:
 
 ```json
 {
@@ -154,66 +184,11 @@ The Gateway evaluates policy, mints an Ed25519 `ExecutionGrant`, dispatches exec
   "status": "succeeded",
   "result": [
     {
-      "text": "{\n  \"action_id\": \"7a636adf-bc8a-4305-a1a3-7c772bc8b27a\",\n  \"result\": \"Hello from HackerNews\",\n  \"skill\": \"claw_hello_world\"\n}",
+      "text": "{\n  \"action_id\": \"7a636adf-bc8a-4305-a1a3-7c772bc8b27a\",\n  \"result\": \"Hello from agent\",\n  \"skill\": \"claw_hello_world\"\n}",
       "type": "text"
     }
   ]
 }
-```
-
----
-
-## 📖 Choose Your Path
-
-| Goal | Resource / Guide | Time |
-| :--- | :--- | :--- |
-| **Integrate via REST** | [`docs/tutorials/rest-curl-agent.md`](docs/tutorials/rest-curl-agent.md) | 10 min |
-| **Integrate via Python** | [`examples/python-agent/`](examples/python-agent/) | 10 min |
-| **Connect an MCP client** | [`docs/tutorials/mcp-client.md`](docs/tutorials/mcp-client.md) | 15 min |
-| **Write a custom policy** | [`docs/how-to/write-policy.md`](docs/how-to/write-policy.md) | 10 min |
-| **Contribute to Rust workspace** | [`docs/getting-started.md`](docs/getting-started.md) | 15 min |
-| **Understand limitations** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) | 5 min |
-
----
-
-## 🌟 Core Architecture & Execution Modes
-
-### 1. Managed Dispatch (Production Default)
-The Gateway dispatches approved actions directly to isolated Executor Hosts over NATS JetStream channels (`exec.v1.<tenant>.<profile>.invoke`). The AI agent receives only the final, sanitized result and never handles execution grants or credentials.
-
-### 2. Portable Grant Mode (REST & MCP Clients)
-For external REST or MCP integrations, the client receives the short-lived `ExecutionGrant` JWT and presents it to the executor. 
-
-> **Security Note on Portable Grants**:
-> - Grants contain **zero SaaS credentials**.
-> - Grants are cryptographically bound to exact parameters via SHA-256 `input_hash`.
-> - Grants expire rapidly (e.g. 30-second TTL) and are single-use.
-> - Executor hosts remain isolated and protected by network access rules.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Agent as 🤖 AI Agent
-    participant Gateway as 🛡️ Trust Gateway
-    participant Policy as ⚖️ Policy Engine
-    participant Executor as ⚡ Executor Host
-    participant API as 🌐 Target API
-
-    Agent->>Gateway: Propose Action (tool, args)
-    Gateway->>Policy: Evaluate policy.toml
-    Policy-->>Gateway: Approved
-    Gateway->>Gateway: Mint Ed25519 ExecutionGrant JWT
-    alt Managed Dispatch (Production Default)
-        Gateway->>Executor: Dispatch GrantedAction via NATS
-    else Portable Grant Mode (REST / MCP)
-        Gateway-->>Agent: Return ExecutionGrant JWT
-        Agent->>Executor: Present Grant + Args
-    end
-    Executor->>Executor: Verify Ed25519 & SHA-256(input_hash)
-    Executor->>API: Execute Mutation
-    API-->>Executor: Raw Output
-    Executor->>Gateway: Raw Result -> Gateway Egress Filter (trust-egress)
-    Gateway-->>Agent: Return Sanitized ExecutionResult
 ```
 
 ---
@@ -228,8 +203,6 @@ For Trust Gateway's security guarantees to hold in production, deployments **mus
 4. **Mandatory Grant Verification**: Executor hosts refuse any execution attempt that lacks a valid, signed, single-use `ExecutionGrant`.
 5. **Gateway-Only Grant Keys**: Ed25519 grant signing keys reside exclusively within the Gateway control plane.
 
-### 🚫 Blocked Direct Path vs Authorized Path
-
 ```text
 ❌ FORBIDDEN DIRECT PATH (Blocked by VPC / Egress Filters):
    AI Agent ═════════════════════════════════════════════> Target SaaS API (BLOCKED)
@@ -240,20 +213,36 @@ For Trust Gateway's security guarantees to hold in production, deployments **mus
 
 ---
 
-## 🛡️ Threat Mitigation Matrix
+## 🛡️ Security Properties & Boundaries
+
+### Security Guarantees Matrix
+
+| Security Property | Guaranteed under Invariants | Control Mechanism / Notes |
+| :--- | :---: | :--- |
+| **Grant Authenticity** | **Yes** | Ed25519 signature verification against Gateway public key |
+| **Argument Integrity** | **Yes** | SHA-256 `input_hash` binding verification at Executor boundary |
+| **Replay Protection** | **Yes** | Single-use nonce (`jti`) checked against durable nonce store |
+| **Class Separation** | **Yes** | Session JWT tokens strictly rejected as execution grants |
+| **Credential Removal** | **Yes** | Agents possess zero standing SaaS credentials |
+| **Argument Semantic Correctness** | **No** | Policy checks compliance; LLM argument semantics are out-of-scope |
+| **Tool Implementation Safety** | **No** | Requires host-level sandboxing (Wasmtime / Docker) for untrusted code |
+| **Provider-Side Exactly-Once Execution** | **No** | Retries depend on target SaaS provider idempotency header support |
+| **Protection Without Network Isolation** | **No** | Requires VPC egress rules preventing direct agent-to-SaaS connections |
+
+### Threat Mitigation Matrix
 
 | Vulnerability or Threat | Control Mechanism |
 | :--- | :--- |
-| **Prompt injection influences agent intent** | The proposed action still receives no execution authority unless it satisfies independent policy, identity, approval, and grant verification controls. |
+| **Prompt injection influences agent intent** | Proposed action still requires independent policy evaluation, identity check, and grant verification. |
 | **Arguments tampered after approval** | SHA-256 `input_hash` verification fails at the executor boundary. |
-| **Grant replayed by malicious actor** | Single-use nonce (`jti`) consumption at the executor rejects replay attempts. |
+| **Grant replayed by malicious actor** | Single-use nonce (`jti`) consumption at executor rejects replay attempts. |
 | **Session JWT used as execution grant** | JWT class separation strictly rejects non-grant token types. |
-| **Agent runtime node compromised** | Agent holds no standing SaaS credentials. In managed mode, grants are dispatched directly to executors; in portable mode, grants remain short-lived, single-use, and bound to one parameter hash. |
+| **Agent runtime node compromised** | Agent holds no standing SaaS credentials. Grants remain short-lived and bound to one parameter hash. |
 | **Unknown or unregistered tool invocation** | Fail-closed default policy denies proposal immediately. |
 | **Executor receives forged grant** | Ed25519 public key signature verification fails. |
-| **Crash during execution** | `action_id`, provider-side idempotency keys, and state reconciliation reduce duplicate side-effects. Connectors without provider idempotency may require recovery handling. |
+| **Crash during execution** | Nonce store records consumption prior to execution. Network retry idempotency relies on provider-side keys. |
 
-### Security Conformance
+### Conformance Suite Verification
 
 CI continuously verifies protocol security invariants via [`conformance/`](conformance/):
 - ✓ Rejects modified parameters (`input_hash` mismatch)
@@ -299,12 +288,19 @@ priority = 20
 
 ---
 
-## 📚 Documentation & References
+## 📖 Choose Your Path
 
-- **[Tutorials](docs/tutorials/)**: [REST / cURL Agent Guide](docs/tutorials/rest-curl-agent.md) | [MCP Client Guide](docs/tutorials/mcp-client.md)
-- **[How-To Guides](docs/how-to/)**: [Authoring Policies](docs/how-to/write-policy.md) | [Adding Executor Tools](docs/how-to/add-tool.md) | [Human Approvals](docs/how-to/require-approval.md)
-- **[Architecture & Concepts](docs/concepts/)**: [Visual Guide](docs/concepts/VISUAL_GUIDE.md) | [Architecture Breakdown](docs/concepts/ARCHITECTURE.md) | [Deployment Invariants](docs/concepts/DEPLOYMENT_TOPOLOGY.md) | [Limitations](docs/concepts/LIMITATIONS.md)
-- **[Specifications & Security](docs/reference/)**: [Protocol Spec](docs/reference/PROTOCOL_SPEC.md) | [Security Guarantees](docs/reference/security-guarantees.md) | [Workspace Structure](docs/reference/WORKSPACE_STRUCTURE.md) | [Transports](docs/reference/API_TRANSPORTS.md)
+| Goal | Resource / Guide |
+| :--- | :--- |
+| **Protocol Specification** | [`docs/reference/PROTOCOL_SPEC.md`](docs/reference/PROTOCOL_SPEC.md) |
+| **Architecture Deep-Dive** | [`docs/concepts/ARCHITECTURE.md`](docs/concepts/ARCHITECTURE.md) |
+| **Integrate via REST** | [`docs/tutorials/rest-curl-agent.md`](docs/tutorials/rest-curl-agent.md) |
+| **Integrate via Python** | [`examples/python-agent/`](examples/python-agent/) |
+| **Connect an MCP Client** | [`docs/tutorials/mcp-client.md`](docs/tutorials/mcp-client.md) |
+| **Write a Custom Policy** | [`docs/how-to/write-policy.md`](docs/how-to/write-policy.md) |
+| **Deployment Invariants** | [`docs/concepts/DEPLOYMENT_TOPOLOGY.md`](docs/concepts/DEPLOYMENT_TOPOLOGY.md) |
+| **System Limitations** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) |
+| **Contribute Code** | [`docs/getting-started.md`](docs/getting-started.md) |
 
 ---
 

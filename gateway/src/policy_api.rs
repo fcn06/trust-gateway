@@ -13,7 +13,6 @@ use trust_core::action::{
 };
 use trust_core::actor::{ActorContext, AuthLevel, SourceContext};
 use trust_core::decision::ActionDecision;
-use trust_core::traits::PolicyEngine;
 
 use crate::gateway::GatewayState;
 

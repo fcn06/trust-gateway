@@ -16,7 +16,6 @@ use std::sync::Arc;
 use trust_core::action::{ActionDescriptor, ActionRequest, OperationKind};
 use trust_core::actor::{ActorContext, AuthLevel, SourceContext};
 use trust_core::audit::AuditEventType;
-use trust_core::traits::PolicyEngine;
 
 use crate::gateway::GatewayState;
 
@@ -160,7 +159,7 @@ pub async fn webhook_post_handler(
 }
 
 /// Helper to validate webhook signatures.
-fn validate_webhook_signature(provider: &str, headers: &HeaderMap, body: &[u8]) -> bool {
+fn validate_webhook_signature(_provider: &str, _headers: &HeaderMap, _body: &[u8]) -> bool {
     // Phase 1: Simple passthrough.
     // In production, this checks `X-Hub-Signature-256`, `Stripe-Signature`, etc.
     // against configured env vars like `GITHUB_WEBHOOK_SECRET`.

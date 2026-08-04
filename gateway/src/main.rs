@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports, unused_variables, deprecated, clippy::all)]
+#![allow(deprecated, dead_code)]
 
 // ─────────────────────────────────────────────────────────────
 // Trust Gateway — main entry point

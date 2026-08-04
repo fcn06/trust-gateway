@@ -162,7 +162,7 @@ pub async fn submit_decision_handler(
 
     // Enforce Tier 2 Re-authentication check
     if record.tier == trust_core::approval::ApprovalTier::Tier2ReAuthenticate {
-        let is_webauthn = opt_verified.as_ref().map_or(false, |v| {
+        let is_webauthn = opt_verified.as_ref().is_some_and(|v| {
             v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
                 || v.auth_method == trust_core::actor::AuthMethod::WebAuthn
         });
@@ -379,7 +379,7 @@ async fn process_decision(
 
     // Enforce Tier 2 Re-authentication check
     if record.tier == trust_core::approval::ApprovalTier::Tier2ReAuthenticate {
-        let is_webauthn = verified.map_or(false, |v| {
+        let is_webauthn = verified.is_some_and(|v| {
             v.auth_level >= trust_core::actor::AuthLevel::Level5WebAuthn
                 || v.auth_method == trust_core::actor::AuthMethod::WebAuthn
         });
@@ -544,10 +544,8 @@ pub async fn action_status_handler(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use identity_context::models::{IdentityContext, SourceContext, SourceType, TransportKind};
     use trust_core::actor::{AuthLevel, AuthMethod};
-    use trust_core::approval::ApprovalTier;
 
     fn make_identity(auth_level: AuthLevel, auth_method: AuthMethod) -> IdentityContext {
         IdentityContext {

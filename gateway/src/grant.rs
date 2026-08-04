@@ -39,16 +39,19 @@ impl Ed25519GrantIssuer {
     }
 
     /// Export the public key as PEM (for distributing to executors).
+    #[allow(dead_code)]
     pub fn public_key_pem(&self) -> String {
         self.key_pair.public_key().to_pem()
     }
 
     /// Export the key pair as PEM (for persistence).
+    #[allow(dead_code)]
     pub fn key_pair_pem(&self) -> String {
         self.key_pair.to_pem()
     }
 
     /// Get the Key ID.
+    #[allow(dead_code)]
     pub fn kid(&self) -> &str {
         &self.kid
     }
@@ -120,6 +123,7 @@ pub struct HmacGrantIssuer {
     key: HS256Key,
 }
 
+#[allow(deprecated)]
 impl HmacGrantIssuer {
     pub fn new(secret: &str) -> Self {
         Self {
@@ -181,6 +185,7 @@ impl HmacGrantIssuer {
     }
 }
 
+#[allow(deprecated)]
 impl trust_core::traits::GrantIssuer for HmacGrantIssuer {
     fn issue_execution_grant(
         &self,
@@ -202,6 +207,7 @@ impl trust_core::traits::GrantIssuer for HmacGrantIssuer {
 // ─────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod tests {
     use super::*;
     use trust_core::action::{ActionDescriptor, ActionRequest, OperationKind};
@@ -364,6 +370,7 @@ mod tests {
     // ── HMAC Tests ──────────────────────────────────────────
 
     #[test]
+    #[allow(deprecated)]
     fn hmac_grant_round_trip() {
         let issuer = HmacGrantIssuer::new("test-secret-32-bytes-minimum-ok!");
         let req = test_action_request();

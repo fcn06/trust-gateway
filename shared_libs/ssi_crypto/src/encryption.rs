@@ -68,7 +68,8 @@ pub fn ed25519_seed_to_x25519_secret(seed: &[u8; 32]) -> [u8; 32] {
     let mut hasher = sha2::Sha512::new();
     hasher.update(seed);
     let hash = hasher.finalize();
-    let mut scalar_bytes: [u8; 32] = hash[0..32].try_into().unwrap();
+    let mut scalar_bytes = [0u8; 32];
+    scalar_bytes.copy_from_slice(&hash[0..32]);
     // Standard X25519/Ed25519 clamping
     scalar_bytes[0] &= 248;
     scalar_bytes[31] &= 127;

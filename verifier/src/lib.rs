@@ -1,3 +1,8 @@
+//! # Trust Gateway Verifier
+//!
+//! Independent library crate for validating short-lived Ed25519 **ExecutionGrant** tokens
+//! and enforcing binding to canonicalized SHA-256 argument digests (`input_hash`).
+
 pub mod canonical;
 pub mod error;
 pub mod grant;

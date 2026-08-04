@@ -28,13 +28,13 @@ pub fn canonical_json(value: &serde_json::Value) -> String {
             format!("[{}]", items.join(","))
         }
         serde_json::Value::Object(obj) => {
-            let mut keys: Vec<&String> = obj.keys().collect();
-            keys.sort();
-            let pairs: Vec<String> = keys
-                .iter()
-                .map(|k| {
-                    let key_str = serde_json::to_string(*k).unwrap_or_else(|_| format!("\"{k}\""));
-                    let val_str = canonical_json(obj.get(*k).unwrap());
+            let mut entries: Vec<(&String, &serde_json::Value)> = obj.iter().collect();
+            entries.sort_by_key(|(k, _)| *k);
+            let pairs: Vec<String> = entries
+                .into_iter()
+                .map(|(k, v)| {
+                    let key_str = serde_json::to_string(k).unwrap_or_else(|_| format!("\"{k}\""));
+                    let val_str = canonical_json(v);
                     format!("{key_str}:{val_str}")
                 })
                 .collect();

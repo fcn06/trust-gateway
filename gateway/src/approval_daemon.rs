@@ -626,10 +626,11 @@ pub async fn run_escalation_sweeper(state: Arc<GatewayState>) {
                 resolved_at: chrono::Utc::now(),
             };
 
-            if let Ok(_) = state
+            if state
                 .approval_store
                 .mark_denied(&record.approval_id, result)
                 .await
+                .is_ok()
             {
                 swept += 1;
 

@@ -172,6 +172,7 @@ impl Executor for NativeToolExecutor {
 
         #[cfg(unix)]
         unsafe {
+            #[allow(unused_imports)]
             use std::os::unix::process::CommandExt;
             cmd.pre_exec(|| {
                 let _ = nix::unistd::setsid();

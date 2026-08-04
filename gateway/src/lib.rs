@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports, unused_variables, deprecated, clippy::all)]
+#![allow(dead_code)]
 
 // ─────────────────────────────────────────────────────────────
 // Trust Gateway — Library Crate

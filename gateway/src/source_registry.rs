@@ -80,16 +80,19 @@ impl SourceRegistry {
     }
 
     /// Look up a source by ID.
+    #[allow(dead_code)]
     pub fn get(&self, source_id: &str) -> Option<SourceRegistration> {
         self.sources.read().unwrap().get(source_id).cloned()
     }
 
     /// List all registered sources.
+    #[allow(dead_code)]
     pub fn list_all(&self) -> Vec<SourceRegistration> {
         self.sources.read().unwrap().values().cloned().collect()
     }
 
     /// Returns the number of registered sources.
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         self.sources.read().unwrap().len()
     }
@@ -166,6 +169,7 @@ fn default_enabled() -> bool {
 
 impl SourceEntry {
     /// Convert TOML entry to domain model.
+    #[allow(dead_code)]
     fn into_registration(self) -> SourceRegistration {
         let source_type = match self.source_type.as_str() {
             "http_client" => SourceType::HttpClient,
@@ -222,6 +226,7 @@ impl SourceEntry {
 ///
 /// Falls back to an empty list if the env var is not set or the file
 /// cannot be read/parsed.
+#[allow(dead_code)]
 pub fn load_sources_from_env() -> Vec<SourceRegistration> {
     let path = match std::env::var("SOURCE_REGISTRY_PATH") {
         Ok(p) => p,

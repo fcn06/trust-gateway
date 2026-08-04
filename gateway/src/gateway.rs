@@ -170,6 +170,7 @@ pub async fn process_action(
 
 /// The rigid 5-step pipeline for gateway governance.
 /// Enforces the "Agents propose, Gateway decides, Executors verify" invariant.
+#[allow(clippy::too_many_arguments)]
 async fn dispatch_pipeline(
     state: Arc<GatewayState>,
     action_req: ActionRequest,
@@ -965,14 +966,16 @@ pub async fn run_trust_v1_listener(nc: async_nats::Client, state: Arc<GatewaySta
                 }
 
                 // 2. Normalize to ProposedAction
-                let mut source = identity_context::models::SourceContext::default();
-                source.transport = identity_context::models::TransportKind::Nats;
-                source.source_type = if req.source_type.as_deref() == Some("picoclaw") {
-                    identity_context::models::SourceType::HttpApi
-                } else {
-                    identity_context::models::SourceType::SsiAgent
+                let source = identity_context::models::SourceContext {
+                    transport: identity_context::models::TransportKind::Nats,
+                    source_type: if req.source_type.as_deref() == Some("picoclaw") {
+                        identity_context::models::SourceType::HttpApi
+                    } else {
+                        identity_context::models::SourceType::SsiAgent
+                    },
+                    correlation_id: trace_id.clone(),
+                    ..Default::default()
                 };
-                source.correlation_id = trace_id.clone();
 
                 let mut identity = identity;
                 identity.source = source;

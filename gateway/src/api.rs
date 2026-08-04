@@ -377,9 +377,7 @@ async fn oauth_service_proxy_handler(
         .unwrap_or_else(|| req.uri().path().to_string());
 
     // Normalize path to ensure /auth prefix is present when calling Standalone OAuth2 Service
-    if path_query.starts_with("/authorize") {
-        path_query = format!("/auth{path_query}");
-    } else if path_query.starts_with("/token") {
+    if path_query.starts_with("/authorize") || path_query.starts_with("/token") {
         path_query = format!("/auth{path_query}");
     }
 
@@ -1358,7 +1356,7 @@ async fn handle_ws_socket(mut socket: WebSocket, state: Arc<GatewayState>, tenan
                         break;
                     }
                     Some(Ok(Message::Ping(p))) => {
-                        if let Err(_) = socket.send(Message::Pong(p)).await {
+                        if socket.send(Message::Pong(p)).await.is_err() {
                             break;
                         }
                     }

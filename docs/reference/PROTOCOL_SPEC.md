@@ -96,7 +96,7 @@ An Executor **MUST** reject execution if any of the following conditions fail:
 
 ## Replay Prevention Semantics
 
-Grants are strictly single-use. Executors check and record the `jti` in a durable nonce store.
+Grants are strictly single-use. Executors perform atomic consumption of the `jti` identifier in a durable nonce store shared by all executor instances.
 If an incoming `jti` has already been recorded, execution is rejected immediately with error `GRANT_REPLAY_DETECTED`.
 
 ---

@@ -71,6 +71,8 @@ An `ExecutionGrant` is a short-lived Ed25519-signed JWT. The protocol requires t
 
 The grant authorizes one execution of one versioned tool with exactly one canonical argument set. Executors must reject expired grants, invalid signatures, reused `jti` values, mismatched tool identities, or mismatched argument hashes.
 
+> **Note on `tool_name`**: `tool_name` is the canonical, versioned tool identifier used by the protocol and executor (e.g. `"io.example.refund@v1"`).
+
 This repository provides the official **Rust reference implementation**:
 * Reference **Gateway** policy decision point and grant issuer (`gateway/`)
 * Reference **Executor Host** runner (`executor_host/`) and standalone verifier library (`verifier/`)
@@ -227,7 +229,7 @@ For Trust Gateway's security guarantees to hold in production, deployments **mus
 | :--- | :---: | :--- |
 | **Grant Authenticity** | **Yes** | Ed25519 signature verification against Gateway public key |
 | **Argument Integrity** | **Yes** | SHA-256 `input_hash` binding verification at Executor boundary |
-| **Replay Protection** | **Yes** | Single-use nonce (`jti`) checked against durable nonce store |
+| **Replay Protection** | **Yes** | Atomic single-use `jti` consumption in a durable nonce store shared by all executor instances |
 | **Class Separation** | **Yes** | Session JWT tokens strictly rejected as execution grants |
 | **Credential Removal** | **Yes** | Agents possess zero standing SaaS credentials |
 | **Argument Semantic Correctness** | **No** | Policy checks compliance; LLM argument semantics are out-of-scope |
@@ -241,7 +243,7 @@ For Trust Gateway's security guarantees to hold in production, deployments **mus
 | :--- | :--- |
 | **Prompt injection influences agent intent** | Proposed action still requires independent policy evaluation, identity check, and grant verification. |
 | **Arguments tampered after approval** | SHA-256 `input_hash` verification fails at the executor boundary. |
-| **Grant replayed by malicious actor** | Single-use nonce (`jti`) consumption at executor rejects replay attempts. |
+| **Grant replayed by malicious actor** | Atomic single-use `jti` consumption in a shared durable nonce store rejects replay attempts. |
 | **Session JWT used as execution grant** | JWT class separation strictly rejects non-grant token types. |
 | **Agent runtime node compromised** | Agent holds no standing SaaS credentials. Grants remain short-lived and bound to one parameter hash. |
 | **Unknown or unregistered tool invocation** | Fail-closed default policy denies proposal immediately. |

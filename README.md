@@ -14,7 +14,7 @@ AI agents should be able to propose actions without automatically possessing the
 
 **Trust Gateway** sits between AI agents and the tools they want to call. Agents can request actions, but they never receive the credentials needed to execute them directly. The gateway evaluates each request against policy and, when allowed, issues a short-lived cryptographic grant that the executor verifies before performing the action.
 
-Executors independently verify that grant before performing any mutation.
+Executors independently verify the grant and never rely on the agent's claim that an action was authorized.
 
 > **"Agents propose. Gateway decides. Executors verify."**
 
@@ -25,20 +25,26 @@ Executors independently verify that grant before performing any mutation.
 │ AI Agent │ ─────────────────────────▶ │ Trust Gateway │
 └──────────┘                            └───────┬───────┘
       │                                        │
-      │ no Stripe/API credentials              │ ExecutionGrant
+      │ no downstream credentials              │ ExecutionGrant
       │                                        ▼
       │                                ┌───────────────┐
-      └──────────────────────────────▶ │   Executor    │ ───▶ Stripe
-                                       │ owns API key  │
+      │  Execution request + grant     │   Executor    │ ───▶ Stripe
+      └──────────────────────────────▶ │ owns API key  │
                                        └───────────────┘
 ```
 
+The agent never receives the downstream credential. It submits a
+`ProposedAction` to Trust Gateway. If policy permits the action, the gateway
+issues an `ExecutionGrant` bound to that exact tool and parameter set.
+The executor verifies the grant before using its own credential to perform
+the action.
+
 ---
-## **🚀 Quickstart (Python SDK in \< 2 minutes)**
+## 🚀 Quickstart (Python SDK in \< 2 minutes)
 
 Protect your AI agent's tool calls in 3 simple steps.
 
-### **1. Clone & Start the Gateway**
+### 1. Clone & Start the Gateway
 
 ```bash
 git clone https://github.com/fcn06/trust_gateway.git  
@@ -48,12 +54,12 @@ cd trust_gateway
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-### **2. Install the Python SDK**
+### 2. Install the Python SDK
 ```bash
 pip install -e sdks/python
 ```
 
-### **3. Guard Your Tools (`quickstart.py`)**
+### 3. Guard Your Tools (`quickstart.py`)
 
 Create a script named `quickstart.py` (or run `python examples/python-agent/quickstart.py`):
 
@@ -67,9 +73,9 @@ client = TrustGatewayClient.dev_mode(gateway_url="http://localhost:3060")
 # 1. Guard a safe/read-only action (Auto-Allowed by Gateway)  
 @guard_tool(client, "claw_hello_world")  
 def say_hello(message: str):  
-    return {"status": "ok", "message": f"Hello, {message} ! "}
+    return {"status": "ok", "message": f"Hello, {message}!"}
 
-# 2. Guard a high-risk financial mutation (Requires Approval / Blocked by Gateway)  
+# 2. Guard a high-risk financial mutation (Requires Human Approval)
 @guard_tool(client, "stripe_refund")  
 def process_refund(amount: int, order_id: str):  
     return {"status": "refunded", "amount": amount}
@@ -80,11 +86,11 @@ if __name__ == "__main__":
     print(f"✅ Executed: {result}\n")
 
     print("--- 2. Testing High-Risk Mutation ---")  
-    try:  
-        # Gateway intercepts and blocks this because policy requires human confirmation  
+    try:   
+        # Gateway intercepts the action because policy requires human confirmation
         process_refund(amount=500, order_id="ord_123")  
     except Exception as e:  
-        print(f"🛑 FIREWALL BLOCKED ACTION: {e}")
+        print(f"🛑 EXECUTION NOT AUTHORIZED: {e}")
 ```
 
 Run it:
@@ -99,7 +105,7 @@ python quickstart.py
 
 --- 2. Testing High-Risk Mutation ---  
 ⚠️  Decision: require_approval (Financial mutation requires human confirmation)  
-🛑 FIREWALL BLOCKED ACTION: Action 'stripe_refund' requires human approval before an ExecutionGrant is issued.
+🛑 EXECUTION NOT AUTHORIZED: Action 'stripe_refund' requires human approval before an ExecutionGrant is issued.
 ```
 
 ---
@@ -138,17 +144,17 @@ The **Execution Authorization Protocol** defines normative authorization contrac
 This repository provides the official **Rust reference implementation** and a **Python SDK**.
 
 ---
-## 📖 If you want to Deep Dive
+## 📖 Explore the Documentation
 
 | Goal | Resource / Guide |
 | :--- | :--- |
 | **Integrate via Python** | [`examples/python-agent/quickstart.py`](examples/python-agent/quickstart.py) |
 | **Protocol Specification** | [`docs/reference/PROTOCOL_SPEC.md`](docs/reference/PROTOCOL_SPEC.md) |
-| **Architecture Deep-Dive** | [`docs/concepts/ARCHITECTURE.md`](docs/concepts/ARCHITECTURE.md) |
+| **Architecture Deep Dive** | [`docs/concepts/ARCHITECTURE.md`](docs/concepts/ARCHITECTURE.md) |
 | **Integrate via REST** | [`docs/tutorials/rest-curl-agent.md`](docs/tutorials/rest-curl-agent.md) |
 | **Write a Custom Policy** | [`docs/how-to/write-policy.md`](docs/how-to/write-policy.md) |
-| **What Trust_Gateway is NOT** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) |
-| **Why do we need Trust_Gateway** | [`docs/concepts/VISUAL_GUIDE.md`](docs/concepts/VISUAL_GUIDE.md) |
+| **What Trust Gateway is Not** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) |
+| **Why Trust Gateway** | [`docs/concepts/VISUAL_GUIDE.md`](docs/concepts/VISUAL_GUIDE.md) |
 | **Threat Model** | [`threat-model/THREAT_MODEL.md`](threat-model/THREAT_MODEL.md) |
 
 ---

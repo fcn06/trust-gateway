@@ -1,5 +1,7 @@
 # 🛡️ Trust Gateway
 
+![Trust Gateway Overall](docs/illustrations/Trust_Gateway_Overall_1.png)
+
 [![Rust](https://img.shields.io/badge/Rust-1.88-orange?logo=rust)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 [![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)

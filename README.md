@@ -24,9 +24,9 @@ Executors independently verify the grant and never rely on the agent's claim tha
 ┌──────────┐       ProposedAction       ┌───────────────┐
 │ AI Agent │ ─────────────────────────▶ │ Trust Gateway │
 └──────────┘                            └───────┬───────┘
-      │                                        │
-      │ no downstream credentials              │ ExecutionGrant
-      │                                        ▼
+      │                                         │
+      │ no downstream credentials               │ ExecutionGrant
+      │                                         ▼
       │                                ┌───────────────┐
       │  Execution request + grant     │   Executor    │ ───▶ Stripe
       └──────────────────────────────▶ │ owns API key  │

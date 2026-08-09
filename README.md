@@ -12,11 +12,26 @@
 
 AI agents should be able to propose actions without automatically possessing the authority to execute them.
 
-**Trust Gateway** sits between AI agents and side-effecting tools and systems (SaaS APIs, databases, native scripts). It evaluates proposed actions against deterministic policy rules and issues a short-lived, Ed25519-signed **ExecutionGrant** cryptographically bound to exactly one tool and one set of canonical parameters. 
+**Trust Gateway** sits between AI agents and the tools they want to call. Agents can request actions, but they never receive the credentials needed to execute them directly. The gateway evaluates each request against policy and, when allowed, issues a short-lived cryptographic grant that the executor verifies before performing the action.
 
 Executors independently verify that grant before performing any mutation.
 
 > **"Agents propose. Gateway decides. Executors verify."**
+
+## Simplified Architecture
+
+```text
+┌──────────┐       ProposedAction       ┌───────────────┐
+│ AI Agent │ ─────────────────────────▶ │ Trust Gateway │
+└──────────┘                            └───────┬───────┘
+      │                                        │
+      │ no Stripe/API credentials              │ ExecutionGrant
+      │                                        ▼
+      │                                ┌───────────────┐
+      └──────────────────────────────▶ │   Executor    │ ───▶ Stripe
+                                       │ owns API key  │
+                                       └───────────────┘
+```
 
 ---
 ## **🚀 Quickstart (Python SDK in \< 2 minutes)**
@@ -134,6 +149,7 @@ This repository provides the official **Rust reference implementation** and a **
 | **Write a Custom Policy** | [`docs/how-to/write-policy.md`](docs/how-to/write-policy.md) |
 | **What Trust_Gateway is NOT** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) |
 | **Why do we need Trust_Gateway** | [`docs/concepts/VISUAL_GUIDE.md`](docs/concepts/VISUAL_GUIDE.md) |
+| **Threat Model** | [`threat-model/THREAT_MODEL.md`](threat-model/THREAT_MODEL.md) |
 
 ---
 ## 🧰 Development

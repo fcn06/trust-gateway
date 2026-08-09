@@ -123,7 +123,7 @@ The **Execution Authorization Protocol** defines normative authorization contrac
 This repository provides the official **Rust reference implementation** and a **Python SDK**.
 
 ---
-## 📖 Choose Your Path
+## 📖 If you want to Deep Dive
 
 | Goal | Resource / Guide |
 | :--- | :--- |
@@ -132,6 +132,8 @@ This repository provides the official **Rust reference implementation** and a **
 | **Architecture Deep-Dive** | [`docs/concepts/ARCHITECTURE.md`](docs/concepts/ARCHITECTURE.md) |
 | **Integrate via REST** | [`docs/tutorials/rest-curl-agent.md`](docs/tutorials/rest-curl-agent.md) |
 | **Write a Custom Policy** | [`docs/how-to/write-policy.md`](docs/how-to/write-policy.md) |
+| **What Trust_Gateway is NOT** | [`docs/concepts/LIMITATIONS.md`](docs/concepts/LIMITATIONS.md) |
+| **Why do we need Trust_Gateway** | [`docs/concepts/VISUAL_GUIDE.md`](docs/concepts/VISUAL_GUIDE.md) |
 
 ---
 ## 🧰 Development

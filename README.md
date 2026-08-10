@@ -23,16 +23,20 @@ Executors independently verify the grant and never rely on the agent's claim tha
 ## Simplified Architecture
 
 ```text
-┌──────────┐       ProposedAction       ┌───────────────┐
-│ AI Agent │ ─────────────────────────▶ │ Trust Gateway │
-└──────────┘                            └───────┬───────┘
-      │                                         │
-      │ no downstream credentials               │ ExecutionGrant
-      │                                         ▼
-      │                                ┌───────────────┐
-      │  Execution request + grant     │   Executor    │ ───▶ Stripe
-      └──────────────────────────────▶ │ owns API key  │
-                                       └───────────────┘
+┌────────────┐       ProposedAction       ┌───────────────┐
+│  AI Agent  │ ─────────────────────────▶ │ Trust Gateway │
+└────────────┘                            └───────┬───────┘
+                                                │
+      No downstream credentials                 │ GrantedAction
+                                                │ + ExecutionGrant
+                                                ▼
+                                        ┌───────────────┐
+                                        │   Executor    │
+                                        │ owns API key  │
+                                        └───────┬───────┘
+                                                │
+                                                ▼
+                                               API
 ```
 
 The agent never receives the downstream credential. It submits a

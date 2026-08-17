@@ -6,6 +6,7 @@
 /target/
 **/target/
 **/*.rs.bk
+Cargo.lock
 
 # ── Cryptographic Keys & Secrets (Secure-by-Default) ─
 **/*.key

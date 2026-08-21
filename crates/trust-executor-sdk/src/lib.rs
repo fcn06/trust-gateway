@@ -28,6 +28,8 @@ pub fn reconcile_timeout(action_id: &str, connector: &str) -> ExecutionResult {
         status: TransactionOutcomeState::UnknownOutcome,
         connector: connector.to_string(),
         external_reference: None,
+        provider_idempotency_key: None,
+        reconciled: false,
         output: serde_json::json!({
             "error": "Execution timed out during external SaaS mutation",
             "state": "unknown_outcome",

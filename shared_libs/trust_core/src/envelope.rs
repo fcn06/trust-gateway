@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct TrustEnvelope<T> {
     pub schema_version: u16,
     pub tenant_id: String,
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
     pub action_id: String,
     pub trace_id: String,
     pub issued_at: chrono::DateTime<chrono::Utc>,
@@ -20,11 +22,16 @@ pub struct TrustEnvelope<T> {
     pub payload: T,
 }
 
+fn default_workspace_id() -> String {
+    "default".to_string()
+}
+
 impl<T> TrustEnvelope<T> {
     pub fn new(tenant_id: impl Into<String>, action_id: impl Into<String>, payload: T) -> Self {
         Self {
             schema_version: 1,
             tenant_id: tenant_id.into(),
+            workspace_id: "default".to_string(),
             action_id: action_id.into(),
             trace_id: uuid::Uuid::new_v4().to_string(),
             issued_at: chrono::Utc::now(),
@@ -33,6 +40,10 @@ impl<T> TrustEnvelope<T> {
             idempotency_key: uuid::Uuid::new_v4().to_string(),
             payload,
         }
+    }
+    pub fn with_workspace_id(mut self, workspace_id: impl Into<String>) -> Self {
+        self.workspace_id = workspace_id.into();
+        self
     }
     pub fn with_auth_context(mut self, subject: impl Into<String>) -> Self {
         self.auth_context = Some(subject.into());

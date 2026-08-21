@@ -13,6 +13,26 @@ impl GrantIssuer {
         issuer: &str,
         ttl_seconds: i64,
     ) -> ExecutionGrant {
+        Self::create_grant_with_workspace(
+            action_id,
+            tenant_id,
+            "default",
+            tool_name,
+            arguments,
+            issuer,
+            ttl_seconds,
+        )
+    }
+
+    pub fn create_grant_with_workspace(
+        action_id: &str,
+        tenant_id: &str,
+        workspace_id: &str,
+        tool_name: &str,
+        arguments: &serde_json::Value,
+        issuer: &str,
+        ttl_seconds: i64,
+    ) -> ExecutionGrant {
         let input_hash = canonical_hash(arguments);
         let now = chrono::Utc::now().timestamp();
         let nonce = format!(
@@ -24,6 +44,7 @@ impl GrantIssuer {
             grant_id: format!("grant_{action_id}"),
             action_id: action_id.to_string(),
             tenant_id: tenant_id.to_string(),
+            workspace_id: workspace_id.to_string(),
             tool_name: tool_name.to_string(),
             input_hash,
             issuer: issuer.to_string(),

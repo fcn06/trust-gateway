@@ -67,6 +67,7 @@ pub async fn webhook_post_handler(
     let action_req = ActionRequest {
         action_id: event_id.clone(),
         tenant_id: tenant_id.clone(),
+        workspace_id: "default".to_string(),
         actor: ActorContext {
             owner_did: "system".to_string(),
             requester_did: format!("webhook:{provider}"),

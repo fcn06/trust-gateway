@@ -13,6 +13,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct NormalizedActionProposal {
     pub tenant_id: String,
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
     pub requester_id: String,
     pub source_type: String, // host | a2a | mcp | webhook
     pub auth_method: String,
@@ -35,12 +37,19 @@ pub struct ActionRequest {
     pub action_id: String,
     /// Tenant that owns the resources being acted upon.
     pub tenant_id: String,
+    /// Workspace scope (compartment / environment).
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
     /// Identity context: who is asking and under what authority.
     pub actor: ActorContext,
     /// Where the action originated (ssi_agent, whatsapp, webhook, etc.).
     pub source: SourceContext,
     /// What is being requested — the action descriptor.
     pub action: ActionDescriptor,
+}
+
+fn default_workspace_id() -> String {
+    "default".to_string()
 }
 
 /// Describes a concrete action that an agent or automation wants to execute.

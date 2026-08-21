@@ -212,7 +212,42 @@ impl GrantValidator {
         requested_tool: &str,
         arguments: &serde_json::Value,
     ) -> Result<ExecutionGrant> {
+        self.validate_bound_context(token, requested_tool, arguments, None, None)
+            .await
+    }
+
+    /// Validate a grant and additionally verify tool, input hash, tenant, and workspace binding.
+    pub async fn validate_bound_context(
+        &self,
+        token: &str,
+        requested_tool: &str,
+        arguments: &serde_json::Value,
+        expected_tenant_id: Option<&str>,
+        expected_workspace_id: Option<&str>,
+    ) -> Result<ExecutionGrant> {
         let grant = self.validate(token).await?;
+
+        // Check tenant binding
+        if let Some(expected_tenant) = expected_tenant_id {
+            if !expected_tenant.is_empty() && grant.tenant_id != expected_tenant {
+                anyhow::bail!(
+                    "Grant tenant mismatch: grant authorizes tenant '{}' but '{}' was requested",
+                    grant.tenant_id,
+                    expected_tenant
+                );
+            }
+        }
+
+        // Check workspace binding
+        if let Some(expected_workspace) = expected_workspace_id {
+            if !expected_workspace.is_empty() && grant.workspace_id != expected_workspace {
+                anyhow::bail!(
+                    "Grant workspace mismatch: grant authorizes workspace '{}' but '{}' was requested",
+                    grant.workspace_id,
+                    expected_workspace
+                );
+            }
+        }
 
         // Check tool name binding
         if grant.allowed_action != requested_tool {

@@ -128,6 +128,7 @@ mod tests {
             "requester_did",
             "tenant_id",
             "tool_version",
+            "workspace_id",
         ];
         assert_eq!(
             prop_names, expected,

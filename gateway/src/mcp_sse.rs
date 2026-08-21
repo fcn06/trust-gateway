@@ -539,6 +539,7 @@ async fn handle_tools_call(
             // Fallback to anonymous — policy engine will deny if needed
             trust_auth::IdentityContext {
                 tenant_id: String::new(),
+                workspace_id: "default".to_string(),
                 owner_did: "mcp-client".to_string(),
                 requester_did: format!("picoclaw:{session_id}"),
                 session_jwt: token_to_verify.clone(),

@@ -287,6 +287,10 @@ pub struct JwtClaims {
     #[serde(default)]
     pub tenant_id: String,
 
+    /// Workspace scope.
+    #[serde(default)]
+    pub workspace_id: Option<String>,
+
     /// Session correlation identifier.
     #[serde(default)]
     pub jti: String,

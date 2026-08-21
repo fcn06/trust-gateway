@@ -71,6 +71,7 @@ impl Ed25519GrantIssuer {
             grant_id: grant_id.clone(),
             action_id: req.action_id.clone(),
             tenant_id: req.tenant_id.clone(),
+            workspace_id: req.workspace_id.clone(),
             owner_did: req.actor.owner_did.clone(),
             requester_did: req.actor.requester_did.clone(),
             allowed_action: req.action.name.clone(),
@@ -146,6 +147,7 @@ impl HmacGrantIssuer {
             grant_id: grant_id.clone(),
             action_id: req.action_id.clone(),
             tenant_id: req.tenant_id.clone(),
+            workspace_id: req.workspace_id.clone(),
             owner_did: req.actor.owner_did.clone(),
             requester_did: req.actor.requester_did.clone(),
             allowed_action: req.action.name.clone(),
@@ -220,6 +222,7 @@ mod tests {
         ActionRequest {
             action_id: "test-action-001".into(),
             tenant_id: "tenant-abc".into(),
+            workspace_id: "default".into(),
             actor: ActorContext {
                 owner_did: "did:twin:owner123".into(),
                 requester_did: "did:twin:agent456".into(),

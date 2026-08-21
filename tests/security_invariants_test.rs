@@ -6,6 +6,7 @@ fn test_negative_invariant_invalid_action_rejected() {
         grant_id: "inv_001".to_string(),
         action_id: "act_001".to_string(),
         tenant_id: "tenant_alpha".to_string(),
+        workspace_id: "default".to_string(),
         owner_did: "did:twin:user".to_string(),
         requester_did: "did:twin:agent".to_string(),
         executor_id: "exec_1".to_string(),
@@ -20,6 +21,7 @@ fn test_negative_invariant_invalid_action_rejected() {
         delegation: None,
         budget: None,
     };
+
 
     let args = serde_json::json!({"summary": "meeting"});
     // Attempting to execute unauthorized tool 'stripe.refund' with calendar grant must be REJECTED!

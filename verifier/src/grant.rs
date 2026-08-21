@@ -81,6 +81,10 @@ pub struct ExecutionGrant {
     /// Tenant scope.
     pub tenant_id: String,
 
+    /// Workspace scope.
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
+
     /// Subject / Resource Owner identity (DID or user ID).
     #[serde(default, alias = "subject_id")]
     pub owner_did: String,
@@ -134,6 +138,21 @@ pub struct ExecutionGrant {
 
 fn default_tool_version() -> String {
     "1.0.0".to_string()
+}
+
+fn default_workspace_id() -> String {
+    "default".to_string()
+}
+
+impl ExecutionGrant {
+    /// Deterministic provider idempotency key binding tenant, workspace, and grant ID.
+    /// Strictly uses underscore '_' separator per INV-009.
+    pub fn provider_idempotency_key(&self) -> String {
+        format!(
+            "idemp_{}_{}_{}",
+            self.tenant_id, self.workspace_id, self.grant_id
+        )
+    }
 }
 
 /// A signed grant — JWT string alongside decoded claims.

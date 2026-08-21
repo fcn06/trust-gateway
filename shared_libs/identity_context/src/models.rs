@@ -13,6 +13,10 @@ pub struct IdentityContext {
     /// Tenant namespace this request belongs to.
     pub tenant_id: String,
 
+    /// Workspace scope.
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
+
     /// DID of the entity that owns the agent box (from JWT `iss`).
     pub owner_did: String,
 
@@ -149,4 +153,8 @@ pub struct ProposedAction {
     /// Raw `_meta` payload preserved for audit logging only.
     /// MUST NEVER be forwarded to executors.
     pub raw_meta: Option<serde_json::Value>,
+}
+
+fn default_workspace_id() -> String {
+    "default".to_string()
 }

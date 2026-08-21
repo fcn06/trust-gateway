@@ -104,6 +104,11 @@
       "description": "Authorized tool version digest/tag.",
       "default": "1.0.0",
       "type": "string"
+    },
+    "workspace_id": {
+      "description": "Workspace scope.",
+      "default": "default",
+      "type": "string"
     }
   },
   "definitions": {

@@ -100,6 +100,8 @@ impl Executor for ReferenceExecutor {
             status,
             connector: "reference_executor".to_string(),
             external_reference: Some(format!("ref_{}", action.grant.grant_id)),
+            provider_idempotency_key: Some(action.grant.provider_idempotency_key()),
+            reconciled: false,
             output: sanitized_output,
             duration_ms: start.elapsed().as_millis() as u64,
         })
@@ -117,6 +119,7 @@ mod tests {
             grant_id: grant_id.to_string(),
             action_id: "act-1".to_string(),
             tenant_id: "tenant-1".to_string(),
+            workspace_id: "default".to_string(),
             tool_name: "mock_refund".to_string(),
             input_hash: canonical_hash(args),
             issuer: "issuer-1".to_string(),

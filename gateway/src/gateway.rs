@@ -801,6 +801,7 @@ pub fn build_action_request(
     Ok(ActionRequest {
         action_id: proposed.action_id,
         tenant_id,
+        workspace_id: proposed.identity.workspace_id,
         actor: ActorContext {
             owner_did: proposed.identity.owner_did,
             requester_did: proposed.identity.requester_did,

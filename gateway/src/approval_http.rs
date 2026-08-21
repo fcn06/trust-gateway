@@ -550,6 +550,7 @@ mod tests {
     fn make_identity(auth_level: AuthLevel, auth_method: AuthMethod) -> IdentityContext {
         IdentityContext {
             tenant_id: "test-tenant".to_string(),
+            workspace_id: "default".to_string(),
             owner_did: "did:twin:owner".to_string(),
             requester_did: "did:twin:user".to_string(),
             session_jwt: "fake-jwt".to_string(),

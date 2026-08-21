@@ -449,6 +449,7 @@ pub async fn verify_oauth2_eddsa_jwt(
 
     Ok(IdentityContext {
         tenant_id,
+        workspace_id: "default".to_string(),
         owner_did: iss.to_string(),
         requester_did,
         auth_level: trust_core::actor::AuthLevel::Level3Session,

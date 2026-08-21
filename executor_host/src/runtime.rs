@@ -175,7 +175,11 @@ impl Runtime {
         );
 
         // 1. Check idempotency cache
-        if let Ok(Some(cached_entry)) = self.execution_results_kv.get(action_id).await {
+        let cache_key = format!(
+            "{}_{}_{}",
+            envelope.tenant_id, envelope.workspace_id, action_id
+        );
+        if let Ok(Some(cached_entry)) = self.execution_results_kv.get(&cache_key).await {
             tracing::info!(
                 "♻️ [{}] Returning cached result (idempotency hit)",
                 action_id
@@ -186,14 +190,27 @@ impl Runtime {
             let _ = msg.ack().await;
             return Ok(());
         }
+        if let Ok(Some(cached_entry)) = self.execution_results_kv.get(action_id).await {
+            tracing::info!(
+                "♻️ [{}] Returning cached result (legacy idempotency hit)",
+                action_id
+            );
+            self.nats
+                .publish(envelope.payload.reply_subject.clone(), cached_entry)
+                .await?;
+            let _ = msg.ack().await;
+            return Ok(());
+        }
 
-        // 2. Verify grant
+        // 2. Verify grant with tenant and workspace binding
         let grant = match self
             .grant_validator
-            .validate_bound(
+            .validate_bound_context(
                 &envelope.payload.grant_jwt,
                 &envelope.payload.tool_id,
                 &envelope.payload.canonical_args,
+                Some(&envelope.tenant_id),
+                Some(&envelope.workspace_id),
             )
             .await
         {
@@ -229,6 +246,7 @@ impl Runtime {
                 TrustEnvelope {
                     schema_version: 1,
                     tenant_id: envelope.tenant_id.clone(),
+                    workspace_id: envelope.workspace_id.clone(),
                     action_id: action_id.clone(),
                     trace_id: envelope.trace_id.clone(),
                     issued_at: Utc::now(),
@@ -251,6 +269,10 @@ impl Runtime {
 
         // 4. Persist and Publish
         let payload = serde_json::to_vec(&result)?;
+        let _ = self
+            .execution_results_kv
+            .put(&cache_key, payload.clone().into())
+            .await;
         self.execution_results_kv
             .put(action_id, payload.clone().into())
             .await?;
@@ -277,6 +299,7 @@ impl Runtime {
         TrustEnvelope {
             schema_version: 1,
             tenant_id: req.tenant_id.clone(),
+            workspace_id: req.workspace_id.clone(),
             action_id: req.action_id.clone(),
             trace_id: req.trace_id.clone(),
             issued_at: Utc::now(),

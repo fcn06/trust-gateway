@@ -26,6 +26,9 @@ pub struct MetaPayload {
     /// Explicit tenant_id override. If present, MUST match the JWT's tenant_id.
     pub tenant_id: Option<String>,
 
+    /// Explicit workspace_id override.
+    pub workspace_id: Option<String>,
+
     /// Explicit requester DID override (for delegated calls).
     pub requester_did: Option<String>,
 
@@ -102,6 +105,11 @@ pub fn extract_meta(args: &mut serde_json::Value) -> Result<MetaPayload, MetaErr
             .or_else(|| ag_block.get("X-Tenant-ID"))
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
+        workspace_id: ag_block
+            .get("workspace_id")
+            .or_else(|| ag_block.get("X-Workspace-ID"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string()),
         requester_did: ag_block
             .get("requester_did")
             .and_then(|v| v.as_str())
@@ -173,6 +181,12 @@ pub fn build_identity_context(
         .clone()
         .unwrap_or_else(|| claims.tenant_id.clone());
 
+    let workspace_id = meta
+        .workspace_id
+        .clone()
+        .or_else(|| claims.workspace_id.clone())
+        .unwrap_or_else(|| "default".to_string());
+
     // Derive requester_did: explicit _meta > JWT sub
     let requester_did = meta
         .requester_did
@@ -181,6 +195,7 @@ pub fn build_identity_context(
 
     Ok(crate::models::IdentityContext {
         tenant_id,
+        workspace_id,
         owner_did: claims.iss,
         requester_did,
         session_jwt: meta.session_jwt.clone(),
@@ -196,7 +211,7 @@ pub fn build_identity_context(
 ///
 /// Per RULE[010_JWT_CONTRACTS.md]: accepts `&JwtClaims` that have
 /// already been verified via `AuthVerifier::verify()`, eliminating
-/// the need to re-decode the JWT payload without signature validation.
+/// the need to re-decode the JWT payload without signature verification.
 ///
 /// This is the **preferred** path for all production call sites.
 pub fn build_identity_context_verified(
@@ -213,6 +228,12 @@ pub fn build_identity_context_verified(
         .clone()
         .unwrap_or_else(|| verified_claims.tenant_id.clone());
 
+    let workspace_id = meta
+        .workspace_id
+        .clone()
+        .or_else(|| verified_claims.workspace_id.clone())
+        .unwrap_or_else(|| "default".to_string());
+
     // Derive requester_did: explicit _meta > JWT sub
     let requester_did = meta
         .requester_did
@@ -221,6 +242,7 @@ pub fn build_identity_context_verified(
 
     Ok(crate::models::IdentityContext {
         tenant_id,
+        workspace_id,
         owner_did: verified_claims
             .user_did
             .clone()

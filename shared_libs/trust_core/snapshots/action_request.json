@@ -42,6 +42,11 @@
     "tenant_id": {
       "description": "Tenant that owns the resources being acted upon.",
       "type": "string"
+    },
+    "workspace_id": {
+      "description": "Workspace scope (compartment / environment).",
+      "default": "default",
+      "type": "string"
     }
   },
   "definitions": {

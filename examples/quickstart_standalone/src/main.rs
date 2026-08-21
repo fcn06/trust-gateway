@@ -38,6 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let action = ProposedAction {
         action_id: "action-demo-001".to_string(),
         tenant_id: "tenant-demo".to_string(),
+        workspace_id: "default".to_string(),
         requester_id: "agent-demo".to_string(),
         tool_name: "mock_refund".to_string(),
         arguments: serde_json::json!({

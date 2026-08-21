@@ -181,6 +181,7 @@ mod tests {
         ActionRequest {
             action_id: "test-action".to_string(),
             tenant_id: "tenant-1".to_string(),
+            workspace_id: "default".to_string(),
             actor: ActorContext {
                 owner_did: "did:key:owner".to_string(),
                 requester_did: "did:key:user".to_string(),

@@ -87,6 +87,7 @@ async fn dispatch_cron_action(
     let action_req = ActionRequest {
         action_id: action_id.clone(),
         tenant_id: tenant_id.clone(),
+        workspace_id: "default".to_string(),
         actor: ActorContext {
             owner_did: "system".to_string(),
             requester_did: "system:cron".to_string(),

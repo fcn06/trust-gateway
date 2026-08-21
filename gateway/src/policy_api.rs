@@ -148,6 +148,7 @@ pub async fn simulate_handler(
     let action_req = ActionRequest {
         action_id: "simulate".to_string(),
         tenant_id: "simulate".to_string(),
+        workspace_id: "default".to_string(),
         actor: ActorContext {
             owner_did: "simulate".to_string(),
             requester_did: "simulate".to_string(),

@@ -147,6 +147,7 @@ impl AuthResolver {
                     let (auth_level, _auth_method) = self.extract_enriched_auth(token);
                     return Ok(IdentityContext {
                         tenant_id: claims.tenant_id,
+                        workspace_id: claims.workspace_id.unwrap_or_else(|| "default".to_string()),
                         owner_did: claims.iss,
                         requester_did: claims.sub,
                         auth_level,
@@ -181,6 +182,35 @@ impl AuthResolver {
         }
 
         self.resolve_hmac_jwt(token)
+    }
+
+    fn resolve_hmac_jwt(&self, token: &str) -> Result<IdentityContext, AuthError> {
+        let verifier = HmacAuthVerifier::new(&self.jwt_secret);
+        // AuthVerifier implementation (e.g. from identity_context) handles the clock skew internally.
+        let verified = verifier
+            .verify(token)
+            .map_err(|e| AuthError::InvalidToken(e.into()))?;
+
+        let claims = verified.claims();
+
+        // Phase 5: Try to extract enriched session claims (auth_level, amr)
+        // from the raw JWT payload. WebAuthn sessions carry auth_level=5.
+        let (auth_level, auth_method) = self.extract_enriched_auth(token);
+
+        Ok(IdentityContext {
+            tenant_id: claims.tenant_id.clone(),
+            workspace_id: claims
+                .workspace_id
+                .clone()
+                .unwrap_or_else(|| "default".to_string()),
+            owner_did: claims.iss.clone(),
+            requester_did: claims.sub.clone(),
+            auth_level,
+            auth_method,
+            oauth_scopes: claims.scope.clone(),
+            session_jwt: token.to_string(),
+            source: SourceContext::default(), // Typically overridden by the transport
+        })
     }
 
     /// Checks if a JWT is an OAuth2 EdDSA bearer token (e.g. HTTP issuer or aud=b2b_agent)
@@ -268,31 +298,6 @@ impl AuthResolver {
         false
     }
 
-    fn resolve_hmac_jwt(&self, token: &str) -> Result<IdentityContext, AuthError> {
-        let verifier = HmacAuthVerifier::new(&self.jwt_secret);
-        // AuthVerifier implementation (e.g. from identity_context) handles the clock skew internally.
-        let verified = verifier
-            .verify(token)
-            .map_err(|e| AuthError::InvalidToken(e.into()))?;
-
-        let claims = verified.claims();
-
-        // Phase 5: Try to extract enriched session claims (auth_level, amr)
-        // from the raw JWT payload. WebAuthn sessions carry auth_level=5.
-        let (auth_level, auth_method) = self.extract_enriched_auth(token);
-
-        Ok(IdentityContext {
-            tenant_id: claims.tenant_id.clone(),
-            owner_did: claims.iss.clone(),
-            requester_did: claims.sub.clone(),
-            auth_level,
-            auth_method,
-            oauth_scopes: claims.scope.clone(),
-            session_jwt: token.to_string(),
-            source: SourceContext::default(), // Typically overridden by the transport
-        })
-    }
-
     /// Phase 5: Extract enriched auth metadata from the JWT payload.
     ///
     /// If the Host included `auth_level` and `amr` in the JWT, use them.
@@ -356,6 +361,7 @@ impl AuthResolver {
         // Verified presentations represent AuthLevel 4.
         Ok(IdentityContext {
             tenant_id: vp.tenant_id,
+            workspace_id: "default".to_string(),
             owner_did: vp.issuer_did,
             requester_did: vp.agent_did,
             auth_level: trust_core::actor::AuthLevel::Level4Verified,

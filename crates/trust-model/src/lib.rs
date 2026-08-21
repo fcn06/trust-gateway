@@ -58,6 +58,8 @@ impl Default for OperationAttributes {
 pub struct ProposedAction {
     pub action_id: String,
     pub tenant_id: String,
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
     pub requester_id: String,
     pub tool_name: String,
     pub operation_attributes: OperationAttributes,
@@ -81,11 +83,27 @@ pub struct ExecutionGrant {
     pub grant_id: String,
     pub action_id: String,
     pub tenant_id: String,
+    #[serde(default = "default_workspace_id")]
+    pub workspace_id: String,
     pub tool_name: String,
     pub input_hash: String,
     pub issuer: String,
     pub expires_at: i64,
     pub nonce: String,
+}
+
+impl ExecutionGrant {
+    /// Deterministic provider idempotency key binding tenant, workspace, and grant ID.
+    pub fn provider_idempotency_key(&self) -> String {
+        format!(
+            "idemp_{}_{}_{}",
+            self.tenant_id, self.workspace_id, self.grant_id
+        )
+    }
+}
+
+fn default_workspace_id() -> String {
+    "default".to_string()
 }
 
 /// Granted action payload dispatched to executors
@@ -103,6 +121,10 @@ pub struct ExecutionResult {
     pub status: TransactionOutcomeState,
     pub connector: String,
     pub external_reference: Option<String>,
+    #[serde(default)]
+    pub provider_idempotency_key: Option<String>,
+    #[serde(default)]
+    pub reconciled: bool,
     pub output: serde_json::Value,
     pub duration_ms: u64,
 }

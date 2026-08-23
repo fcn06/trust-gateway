@@ -33,6 +33,7 @@ pub mod api;
 pub mod app_registry;
 pub mod auth;
 pub mod gateway;
+pub mod ucan_api;
 
 // Internal modules — not exposed as public API
 mod agent_api;

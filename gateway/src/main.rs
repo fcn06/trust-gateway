@@ -38,6 +38,7 @@ mod standalone_registry;
 pub mod transport;
 mod transport_normalizer;
 // mod ui_projector; — REMOVED: legacy activity feed projector (Phase 4b)
+pub mod ucan_api;
 mod webhook_handler;
 
 use anyhow::{Context, Result};

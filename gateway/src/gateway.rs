@@ -112,6 +112,9 @@ pub struct ProposeActionRequest {
     /// Used to apply source-specific policy rules.
     #[serde(default)]
     pub source_type: Option<String>,
+    /// Optional UCAN capability delegation token for delegated agent authority.
+    #[serde(default)]
+    pub ucan_token: Option<String>,
 }
 
 /// The response from the Trust Gateway.
@@ -876,6 +879,7 @@ pub async fn run_trust_v1_listener(nc: async_nats::Client, state: Arc<GatewaySta
                         arguments: normalized.action_arguments,
                         tenant_id: Some(normalized.tenant_id),
                         source_type: Some(normalized.source_type),
+                        ucan_token: None,
                     }
                 }
                 Err(e) => {

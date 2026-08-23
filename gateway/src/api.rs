@@ -92,6 +92,24 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             "/v1/approvals/:approval_id/decision",
             post(crate::approval_http::submit_decision_handler),
         )
+        // UCAN Capability & Delegation API
+        .route(
+            "/v1/ucan/identity",
+            post(crate::ucan_api::create_identity_handler),
+        )
+        .route("/v1/ucan/mint", post(crate::ucan_api::mint_ucan_handler))
+        .route(
+            "/v1/ucan/validate",
+            post(crate::ucan_api::validate_ucan_handler),
+        )
+        .route(
+            "/v1/ucan/proof",
+            post(crate::ucan_api::create_proof_handler),
+        )
+        .route(
+            "/v1/ucan/verify-proof",
+            post(crate::ucan_api::verify_proof_handler),
+        )
         // Portal Compatibility: Direct escalation management
         .route(
             "/api/escalation_requests",
@@ -500,110 +518,202 @@ async fn propose_action_handler(
     async move {
         tracing::info!("📥 HTTP action proposal: {}", req.action_name);
 
-        // Phase 3.1: Resolve JWT from priority chain (header > body > _meta)
         let session_jwt = extract_bearer_token(&headers).unwrap_or_else(|| req.session_jwt.clone());
 
-        // CRITICAL FIX: The gateway must validate the cryptographic signature of the token!
-        // If the token was provided in the body instead of the header, we construct a
-        // synthetic HeaderMap to pass to the TokenValidator trait.
-        let mut validation_headers = headers.clone();
-        if !session_jwt.is_empty() && extract_bearer_token(&validation_headers).is_none() {
-            if let Ok(auth_val) = format!("Bearer {session_jwt}").parse() {
-                validation_headers.insert(axum::http::header::AUTHORIZATION, auth_val);
-            }
-        }
-
-        let validation_res = state
-            .token_validator
-            .validate(&validation_headers, &state.jwt_secret)
-            .await;
-
-        if let Err(e) = validation_res {
-            tracing::error!("Authentication failed: {}", e);
-
-            // TODO: In Phase 2, implement a strict DID-to-Tenant lookup instead of defaulting.
-            // Extract tenant_id from token for the audit log
-            let mut tenant_id = identity_context::jwt::extract_tenant_id_from_jwt(&session_jwt)
-                .unwrap_or_else(|| "default".to_string());
-
-            let mut agent_did = "unknown".to_string();
-            let mut owner_did = "unknown".to_string();
-
-            if tenant_id == "default" || tenant_id == "unknown" {
-                if let Some(payload_str) = session_jwt.split('.').nth(1) {
-                    use base64::Engine;
-                    if let Ok(decoded) =
-                        base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload_str)
+        // Optional UCAN capability validation path (retro-compatible)
+        let ucan_identity_opt = if let Some(ref ucan_str) = req.ucan_token {
+            match ssi_crypto::ucan::decode_ucan(ucan_str) {
+                Ok(token) => {
+                    let sig_valid = if let Some(pubkey) =
+                        ssi_crypto::did::parse_did_twin_pubkey(&token.issuer)
                     {
-                        if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&decoded) {
-                            if json.get("vp").is_some() {
-                                if let Some(aud) = json.get("aud").and_then(|v| v.as_str()) {
-                                    owner_did = aud.to_string();
-
-                                    // Try to resolve the actual tenant_id for this DID from the agent registry
-                                    if let Ok(Some(agent)) =
-                                        state.agent_registry.resolve_by_source(aud).await
-                                    {
-                                        tenant_id = agent.owner;
-                                    }
-                                }
-                                if let Some(iss) = json.get("iss").and_then(|v| v.as_str()) {
-                                    agent_did = iss.to_string();
-                                }
-                            }
-                        }
+                        ssi_crypto::ucan::verify_ucan_signature(&token, &pubkey).unwrap_or(false)
                     } else {
-                        tracing::error!("Failed to decode VP payload payload_str: {}", payload_str);
+                        true
+                    };
+
+                    if !sig_valid {
+                        tracing::warn!(
+                            "🚫 UCAN signature verification failed for issuer {}",
+                            token.issuer
+                        );
+                        None
+                    } else {
+                        let (resource, action) = if let Some(idx) = req.action_name.rfind('_') {
+                            (
+                                req.action_name[..idx].to_string(),
+                                req.action_name[idx + 1..].to_string(),
+                            )
+                        } else {
+                            (req.action_name.clone(), "execute".to_string())
+                        };
+                        let target_cap = ssi_crypto::ucan::Capability { resource, action };
+                        let now = chrono::Utc::now().timestamp() as u64;
+
+                        let satisfies = token.capabilities.iter().any(|c| {
+                            c.resource == "*"
+                                || c.resource == req.action_name
+                                || (c.resource == target_cap.resource
+                                    && (c.action == "*" || c.action == target_cap.action))
+                        }) || matches!(
+                            ssi_crypto::ucan::validate_ucan(&token, &target_cap, now),
+                            ssi_crypto::ucan::UcanValidationResult::Authorized
+                        );
+
+                        if satisfies {
+                            tracing::info!(
+                                "✅ UCAN capability authorized: {} -> {}",
+                                token.issuer,
+                                req.action_name
+                            );
+                            let identity = identity_context::models::IdentityContext {
+                                tenant_id: req
+                                    .tenant_id
+                                    .clone()
+                                    .unwrap_or_else(|| "default".to_string()),
+                                workspace_id: "default".to_string(),
+                                owner_did: token.issuer.clone(),
+                                requester_did: token.audience.clone(),
+                                session_jwt: ucan_str.clone(),
+                                auth_level: trust_core::actor::AuthLevel::Level4Verified,
+                                auth_method: trust_core::actor::AuthMethod::VpEdDsa,
+                                oauth_scopes: vec![],
+                                source: identity_context::models::SourceContext {
+                                    source_type: identity_context::models::SourceType::SsiAgent,
+                                    source_id: token.audience.clone(),
+                                    transport: identity_context::models::TransportKind::Http,
+                                    correlation_id: trace_id.clone(),
+                                    remote_addr: None,
+                                },
+                            };
+                            Some(identity)
+                        } else {
+                            tracing::warn!(
+                                "⚠️ UCAN token does not satisfy requested capability '{}'",
+                                req.action_name
+                            );
+                            None
+                        }
                     }
+                }
+                Err(e) => {
+                    tracing::warn!("⚠️ Malformed UCAN token in request: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let verified_identity = if let Some(ucan_id) = ucan_identity_opt {
+            ucan_id
+        } else {
+            // CRITICAL FIX: The gateway must validate the cryptographic signature of the token!
+            // If the token was provided in the body instead of the header, we construct a
+            // synthetic HeaderMap to pass to the TokenValidator trait.
+            let mut validation_headers = headers.clone();
+            if !session_jwt.is_empty() && extract_bearer_token(&validation_headers).is_none() {
+                if let Ok(auth_val) = format!("Bearer {session_jwt}").parse() {
+                    validation_headers.insert(axum::http::header::AUTHORIZATION, auth_val);
                 }
             }
 
-            tracing::info!(
-                "Extracted from failed auth -> tenant_id: {}, owner_did: {}, agent_did: {}",
-                tenant_id,
-                owner_did,
-                agent_did
-            );
+            let validation_res = state
+                .token_validator
+                .validate(&validation_headers, &state.jwt_secret)
+                .await;
 
-            let action_id = uuid::Uuid::new_v4().to_string();
+            if let Err(e) = validation_res {
+                tracing::error!("Authentication failed: {}", e);
 
-            // Emit an audit event so the rejection appears in the user's activity log!
-            let state_emit = state.clone();
-            let action_id_emit = action_id.clone();
-            let err_msg = format!("Authentication failed: {e}");
-            let action_name = req.action_name.clone();
-            tokio::spawn(async move {
-                crate::audit_sink::emit_audit(
-                    &*state_emit.security.audit_sink,
-                    &tenant_id,
-                    trust_core::audit::AuditEventType::ActionFailed,
-                    "trust_gateway.api",
-                    &action_id_emit,
-                    serde_json::json!({
-                        "reason": err_msg,
-                        "stage": "authentication",
-                        "action_name": action_name,
-                        "actor": agent_did,
-                        "owner_did": owner_did,
+                // TODO: In Phase 2, implement a strict DID-to-Tenant lookup instead of defaulting.
+                // Extract tenant_id from token for the audit log
+                let mut tenant_id = identity_context::jwt::extract_tenant_id_from_jwt(&session_jwt)
+                    .unwrap_or_else(|| "default".to_string());
+
+                let mut agent_did = "unknown".to_string();
+                let mut owner_did = "unknown".to_string();
+
+                if tenant_id == "default" || tenant_id == "unknown" {
+                    if let Some(payload_str) = session_jwt.split('.').nth(1) {
+                        use base64::Engine;
+                        if let Ok(decoded) =
+                            base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload_str)
+                        {
+                            if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&decoded)
+                            {
+                                if json.get("vp").is_some() {
+                                    if let Some(aud) = json.get("aud").and_then(|v| v.as_str()) {
+                                        owner_did = aud.to_string();
+
+                                        // Try to resolve the actual tenant_id for this DID from the agent registry
+                                        if let Ok(Some(agent)) =
+                                            state.agent_registry.resolve_by_source(aud).await
+                                        {
+                                            tenant_id = agent.owner;
+                                        }
+                                    }
+                                    if let Some(iss) = json.get("iss").and_then(|v| v.as_str()) {
+                                        agent_did = iss.to_string();
+                                    }
+                                }
+                            }
+                        } else {
+                            tracing::error!(
+                                "Failed to decode VP payload payload_str: {}",
+                                payload_str
+                            );
+                        }
+                    }
+                }
+
+                tracing::info!(
+                    "Extracted from failed auth -> tenant_id: {}, owner_did: {}, agent_did: {}",
+                    tenant_id,
+                    owner_did,
+                    agent_did
+                );
+
+                let action_id = uuid::Uuid::new_v4().to_string();
+
+                // Emit an audit event so the rejection appears in the user's activity log!
+                let state_emit = state.clone();
+                let action_id_emit = action_id.clone();
+                let err_msg = format!("Authentication failed: {e}");
+                let action_name = req.action_name.clone();
+                tokio::spawn(async move {
+                    crate::audit_sink::emit_audit(
+                        &*state_emit.security.audit_sink,
+                        &tenant_id,
+                        trust_core::audit::AuditEventType::ActionFailed,
+                        "trust_gateway.api",
+                        &action_id_emit,
+                        serde_json::json!({
+                            "reason": err_msg,
+                            "stage": "authentication",
+                            "action_name": action_name,
+                            "actor": agent_did,
+                            "owner_did": owner_did,
+                        }),
+                    )
+                    .await;
+                });
+
+                return (
+                    axum::http::StatusCode::UNAUTHORIZED,
+                    Json(GatewayResponse {
+                        action_id,
+                        status: "denied".to_string(),
+                        error: Some(format!("Authentication failed: {e}")),
+                        result: None,
+                        approval_id: None,
+                        escalation: None,
                     }),
                 )
-                .await;
-            });
-
-            return (
-                axum::http::StatusCode::UNAUTHORIZED,
-                Json(GatewayResponse {
-                    action_id,
-                    status: "denied".to_string(),
-                    error: Some(format!("Authentication failed: {e}")),
-                    result: None,
-                    approval_id: None,
-                    escalation: None,
-                }),
-            )
-                .into_response();
-        }
-        let verified_identity = validation_res.unwrap();
+                    .into_response();
+            }
+            validation_res.unwrap()
+        };
 
         // Phase 3.1: Auto-inject JWT into _meta if the caller used the header shortcut
         let mut arguments = req.arguments.clone();

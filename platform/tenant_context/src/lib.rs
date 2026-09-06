@@ -7,10 +7,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// The tier of a tenant, determining feature access and LLM routing.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TenantTier {
     /// Entry-level: small local/cheap LLM, no tool access.
+    #[default]
     Basic,
     /// Mid-tier LLM, tool access allowed.
     Pro,
@@ -20,12 +21,6 @@ pub enum TenantTier {
     Telco,
     /// Deterministic + logging mode, full trace capture.
     Insurance,
-}
-
-impl Default for TenantTier {
-    fn default() -> Self {
-        Self::Basic
-    }
 }
 
 impl std::fmt::Display for TenantTier {
@@ -41,10 +36,11 @@ impl std::fmt::Display for TenantTier {
 }
 
 /// The lifecycle status of a tenant.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum TenantStatus {
     /// Tenant is active and fully operational.
+    #[default]
     Active,
     /// Tenant is suspended (e.g., overdue billing). No new operations allowed.
     Suspended,
@@ -52,17 +48,12 @@ pub enum TenantStatus {
     Deleted,
 }
 
-impl Default for TenantStatus {
-    fn default() -> Self {
-        Self::Active
-    }
-}
-
 /// Key management mode for the tenant's vault.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum KeyMode {
     /// Platform manages all keys (SMB default).
+    #[default]
     PlatformManaged,
     /// Customer manages keys via external KMS (AWS/GCP/Azure).
     CustomerManaged,
@@ -71,12 +62,6 @@ pub enum KeyMode {
     /// Connection Model (V6): users hold their own keys in a Sovereign Web Wallet.
     /// The tenant only holds a Service DID and UCAN delegations.
     Sovereign,
-}
-
-impl Default for KeyMode {
-    fn default() -> Self {
-        Self::PlatformManaged
-    }
 }
 
 /// The full tenant record, stored in the Tenant Registry.

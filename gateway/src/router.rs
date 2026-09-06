@@ -457,7 +457,7 @@ impl ToolRegistry {
     pub async fn all_categories(&self) -> Vec<String> {
         let entries = self.entries.read().await;
         let mut cats: std::collections::HashSet<String> = std::collections::HashSet::new();
-        for (_, entry) in entries.iter() {
+        for entry in entries.values() {
             if let Some(ref cat) = entry.category {
                 cats.insert(cat.clone());
             }

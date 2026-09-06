@@ -212,7 +212,7 @@ impl trust_core::traits::AgentRegistry for JetStreamAgentRegistry {
         }
 
         // Sort by created_at descending (newest first)
-        records.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        records.sort_by_key(|a| std::cmp::Reverse(a.created_at));
 
         Ok(records)
     }

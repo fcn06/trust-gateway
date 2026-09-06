@@ -48,6 +48,7 @@ pub struct ActorContext {
     Hash,
     Serialize,
     Deserialize,
+    Default,
     schemars::JsonSchema,
 )]
 #[serde(rename_all = "snake_case")]
@@ -57,17 +58,12 @@ pub enum AuthLevel {
     /// Level 2: Bearer Token (e.g., OAuth2 with scopes).
     Level2Bearer = 2,
     /// Level 3: Session Token (e.g., HMAC JWT, standard login).
+    #[default]
     Level3Session = 3,
     /// Level 4: Verified Presentation (DID VP / EdDSA signed).
     Level4Verified = 4,
     /// Level 5: Hardware-backed (WebAuthn).
     Level5WebAuthn = 5,
-}
-
-impl Default for AuthLevel {
-    fn default() -> Self {
-        Self::Level3Session
-    }
 }
 
 impl std::fmt::Display for AuthLevel {
@@ -84,7 +80,9 @@ impl std::fmt::Display for AuthLevel {
 
 /// The method used to authenticate a request.
 /// Included in audit events and policy evaluation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default, schemars::JsonSchema,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum AuthMethod {
     /// Static API key.
@@ -92,17 +90,12 @@ pub enum AuthMethod {
     /// OAuth2 or similar Bearer token.
     OAuth2,
     /// Standard HMAC JWT (e.g. Host session).
+    #[default]
     HmacJwt,
     /// Verified Presentation or EdDSA JWT.
     VpEdDsa,
     /// WebAuthn hardware-backed token.
     WebAuthn,
-}
-
-impl Default for AuthMethod {
-    fn default() -> Self {
-        Self::HmacJwt
-    }
 }
 
 impl std::fmt::Display for AuthMethod {

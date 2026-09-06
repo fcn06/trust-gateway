@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 [![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2B%20Streamable-purple)](https://modelcontextprotocol.io)
-
+[![Whitepaper](https://img.shields.io/badge/Whitepaper-NICP%20Architecture-teal?logo=read-the-docs&logoColor=white)](whitepaper/b2b_agent_whitepaper.md)
 
 > **Stop giving AI agents raw API keys. Trust Gateway is an Execution Firewall and Human-in-the-Loop gateway for AI tools.**
 
@@ -19,6 +19,12 @@ AI agents should be able to propose actions without automatically possessing the
 Executors independently verify the grant and never rely on the agent's claim that an action was authorized.
 
 > **"Agents propose. Gateway decides. Executors verify."**
+
+> 📄 **New Reference Architecture (Sept 2026):** Read the whitepaper on [The Intelligent Enterprise Boundary & Negotiated Interaction Contracts (NICP)](whitepaper/b2b_agent_whitepaper.md).
+
+---
+
+
 
 ## Simplified Architecture
 

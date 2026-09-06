@@ -153,6 +153,10 @@ pub struct ProposedAction {
     /// Raw `_meta` payload preserved for audit logging only.
     /// MUST NEVER be forwarded to executors.
     pub raw_meta: Option<serde_json::Value>,
+
+    /// Optional B2B negotiated interaction contract context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 
 fn default_workspace_id() -> String {

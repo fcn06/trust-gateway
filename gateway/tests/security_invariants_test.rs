@@ -20,6 +20,8 @@ fn test_negative_invariant_invalid_action_rejected() {
         registry_hash: String::new(),
         delegation: None,
         budget: None,
+        contract_id: None,
+        contract_hash: None,
     };
 
     let args = serde_json::json!({"summary": "meeting"});

@@ -14,7 +14,7 @@ This example runs the entire Trust Gateway control flow **in-process** without N
 
 ## Prerequisites
 
-- Rust 1.88+ with cargo
+- Rust 1.89+ with cargo
 - C compiler and OpenSSL dev headers (see [main README](../../README.md#prerequisites))
 
 ## Run

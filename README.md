@@ -4,7 +4,7 @@
   <img src="docs/illustrations/Trust_Gateway_Overall_1.png" alt="Trust Gateway Overall" width="80%">
 </p>
 
-[![Rust](https://img.shields.io/badge/Rust-1.88-orange?logo=rust)](https://www.rust-lang.org)
+[![Rust](https://img.shields.io/badge/Rust-1.89%2B-orange?logo=rust)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue)](LICENSE)
 [![NATS](https://img.shields.io/badge/NATS-JetStream-green?logo=nats.io)](https://nats.io)
 [![MCP](https://img.shields.io/badge/MCP-SSE%20%2B%20Streamable-purple)](https://modelcontextprotocol.io)
@@ -130,12 +130,12 @@ docker build -t trust-gateway-demo -f deploy/Dockerfile.demo .
 docker run --rm trust-gateway-demo
 ```
 
-### Source Build (Rust 1.88+)
+### Source Build (Rust 1.89+)
 
 Run the standalone quickstart demo directly from source:
 
 ```bash
-# Prerequisites: Rust 1.88+, build-essential / xcode-select, libssl-dev
+# Prerequisites: Rust 1.89+, build-essential / xcode-select, libssl-dev
 cargo run -p quickstart-standalone
 ```
 ---
@@ -150,10 +150,52 @@ The **Execution Authorization Protocol** defines normative authorization contrac
 This repository provides the official **Rust reference implementation** and a **Python SDK**.
 
 ---
+
+## 🌐 The Bigger Picture: The "B2B Agent" Architecture
+
+Trust Gateway was designed as the core enforcement engine of a broader architectural paradigm: **Autonomous B2B Agents**.
+
+As enterprises deploy autonomous agents that interact across corporate boundaries (such as procurement, logistics, dynamic partner integrations, and automated commerce), giving LLM agents direct API credentials or ambient execution authority creates severe prompt-injection, confused-deputy, and liability risks.
+
+The **B2B Agent pattern** solves this by establishing a strict dual-plane separation:
+1. **Semantic Plane (Probabilistic)**: External and internal agents communicate over agent protocols (such as A2A, MCP, or DIDComm) to discover capabilities and negotiate mutual terms.
+2. **Control Plane (Deterministic)**: The **Trust Gateway** acts as the un-bypassable gatekeeper. It holds all downstream credentials and evaluates every proposed action against machine-enforceable **Interaction Contracts** and enterprise policy.
+
+```text
+External B2B Agent  <── negotiation ──>  Enterprise B2B Agent
+                                                 │
+                                                 │ (mutual signing)
+                                                 ▼
+                                        Interaction Contract
+                                                 │
+                                                 ▼
+                                         ┌───────────────┐
+                                         │ Trust Gateway │
+                                         └───────┬───────┘
+                                                 │ (ExecutionGrant)
+                                                 ▼
+                                         Isolated Executor  ──►  Internal Systems (ERP/APIs)
+```
+
+### 📄 Read the Whitepaper
+
+For the full architectural specification, formal threat model, and implementation status, read the technical whitepaper:
+
+👉 **[Interaction Contracts for Autonomous B2B Agents: Architecture, Threat Model, and Open Questions](whitepaper/b2b_agent_whitepaper.md)**
+
+Key topics covered in the whitepaper:
+- **Negotiated Interaction Contracts (NICP)**: Canonicalization (RFC 8785 JCS), contract lifecycle, and mutual cryptographic attestation.
+- **The Effective Authority Invariant**: `effective_authority = contract ∩ enterprise_policy ∩ identity_delegation`.
+- **Stateful Authorization & Cumulative Risk**: Sliding-window velocity limits and multi-request exposure guards.
+- **Semantic Verification Pipeline**: Compiling and freezing schema mappings into content-addressed sandboxed WebAssembly bytecode rather than relying on live LLM translation.
+- **Audit Trails & Dispute Resolution**: Append-only sealed receipts linking grants, contracts, input/output digests, and non-repudiable signatures.
+
+---
 ## 📖 Explore the Documentation
 
 | Goal | Resource / Guide |
 | :--- | :--- |
+| **B2B Agent Whitepaper** | [`whitepaper/b2b_agent_whitepaper.md`](whitepaper/b2b_agent_whitepaper.md) |
 | **Integrate via Python** | [`examples/python-agent/quickstart.py`](examples/python-agent/quickstart.py) |
 | **Integrate via MCP** | [`docs/tutorials/mcp-client.md`](docs/tutorials/mcp-client.md) |
 | **Integrate via REST** | [`docs/tutorials/rest-curl-agent.md`](docs/tutorials/rest-curl-agent.md) |

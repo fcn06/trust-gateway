@@ -116,6 +116,8 @@ mod tests {
             "allowed_action",
             "budget",
             "clearance",
+            "contract_hash",
+            "contract_id",
             "delegation",
             "executor_id",
             "expires_at",

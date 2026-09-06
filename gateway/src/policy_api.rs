@@ -175,7 +175,9 @@ pub async fn simulate_handler(
             }),
             arguments: serde_json::json!({}),
             tags: req.tags.unwrap_or_default(),
+            contract_context: None,
         },
+        contract_context: None,
     };
 
     match state.security.policy_engine.evaluate(&action_req).await {

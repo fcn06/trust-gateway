@@ -580,6 +580,7 @@ async fn handle_tools_call(
             arguments: arguments.clone(),
             identity: fallback_identity,
             raw_meta: None,
+            contract_context: None,
         }
     });
 

@@ -27,6 +27,8 @@ pub struct NormalizedActionProposal {
     pub payload: serde_json::Value,
     pub transport_metadata: Option<serde_json::Value>,
     pub planning_context: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 ///
 /// Created when any proposer (ssi_agent, webhook, WhatsApp bridge, PicoClaw)
@@ -46,6 +48,9 @@ pub struct ActionRequest {
     pub source: SourceContext,
     /// What is being requested — the action descriptor.
     pub action: ActionDescriptor,
+    /// Optional B2B negotiated interaction contract context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 
 fn default_workspace_id() -> String {
@@ -74,6 +79,9 @@ pub struct ActionDescriptor {
     /// Free-form risk/classification tags, e.g. ["mutation", "external_api",
     /// "payout_change"]. Policy rules can match on these.
     pub tags: Vec<String>,
+    /// Optional B2B negotiated interaction contract context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 
 /// The kind of operation an action performs.

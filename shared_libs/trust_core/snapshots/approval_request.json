@@ -100,6 +100,9 @@
           "description": "Business category, e.g. \"scheduling\", \"refund\", \"payment\".",
           "type": "string"
         },
+        "contract_context": {
+          "description": "Optional B2B negotiated interaction contract context."
+        },
         "name": {
           "description": "Fully qualified action name, e.g. \"google.calendar.event.create\".",
           "type": "string"
@@ -158,6 +161,9 @@
               "$ref": "#/definitions/ActorContext"
             }
           ]
+        },
+        "contract_context": {
+          "description": "Optional B2B negotiated interaction contract context."
         },
         "source": {
           "description": "Where the action originated (ssi_agent, whatsapp, webhook, etc.).",

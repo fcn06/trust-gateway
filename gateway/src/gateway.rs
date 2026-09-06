@@ -35,6 +35,7 @@ pub struct SecurityState {
     pub policy_engine: Arc<dyn PolicyEngine>,
     pub grant_issuer: Arc<dyn GrantIssuer>,
     pub audit_sink: Arc<dyn AuditSink>,
+    pub contract_verifier: Option<Arc<dyn crate::contract_verifier::ContractVerifier>>,
 }
 
 pub struct GatewayState {
@@ -115,6 +116,9 @@ pub struct ProposeActionRequest {
     /// Optional UCAN capability delegation token for delegated agent authority.
     #[serde(default)]
     pub ucan_token: Option<String>,
+    /// Optional B2B negotiated interaction contract context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 
 /// The response from the Trust Gateway.
@@ -300,6 +304,40 @@ async fn dispatch_pipeline(
             "No registered agent for source '{}' — proceeding with policy only",
             agent_source_key
         );
+    }
+
+    // ── Contract Verifier: Validate B2B Interaction Contract if present ────
+    if let Some(contract_ctx) = action_req
+        .contract_context
+        .as_ref()
+        .or(action_req.action.contract_context.as_ref())
+    {
+        if let Some(verifier) = &state.security.contract_verifier {
+            if let Err(e) = verifier
+                .verify_action(
+                    &tenant_id,
+                    &action_req.actor.requester_did,
+                    &action_name,
+                    &action_req.action.arguments,
+                    contract_ctx,
+                )
+                .await
+            {
+                tracing::warn!(
+                    "⛔ B2B Contract Verification Failed for action '{}': {}",
+                    action_name,
+                    e
+                );
+                return Ok(GatewayResponse {
+                    action_id,
+                    status: "denied".to_string(),
+                    result: None,
+                    error: Some(format!("B2B Contract Verification Denied: {e}")),
+                    approval_id: None,
+                    escalation: None,
+                });
+            }
+        }
     }
 
     // 2. Evaluate policy
@@ -831,7 +869,9 @@ pub fn build_action_request(
             },
             arguments: proposed.arguments,
             tags: vec![],
+            contract_context: proposed.contract_context.clone(),
         },
+        contract_context: proposed.contract_context,
     })
 }
 
@@ -880,6 +920,7 @@ pub async fn run_trust_v1_listener(nc: async_nats::Client, state: Arc<GatewaySta
                         tenant_id: Some(normalized.tenant_id),
                         source_type: Some(normalized.source_type),
                         ucan_token: None,
+                        contract_context: normalized.contract_context,
                     }
                 }
                 Err(e) => {
@@ -991,6 +1032,7 @@ pub async fn run_trust_v1_listener(nc: async_nats::Client, state: Arc<GatewaySta
                     arguments: req.arguments,
                     identity,
                     raw_meta: None,
+                    contract_context: req.contract_context,
                 };
 
                 tracing::debug!(

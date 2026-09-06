@@ -134,6 +134,14 @@ pub struct ExecutionGrant {
     /// Execution budget grant bounds.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub budget: Option<ExecutionBudget>,
+
+    /// B2B Negotiated Interaction Contract ID (if action is contract-governed).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_id: Option<String>,
+
+    /// B2B Negotiated Interaction Contract SHA-256 fingerprint.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_hash: Option<String>,
 }
 
 fn default_tool_version() -> String {

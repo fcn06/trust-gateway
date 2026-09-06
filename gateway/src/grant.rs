@@ -67,6 +67,24 @@ impl Ed25519GrantIssuer {
         let expires_at = chrono::Utc::now().timestamp() + ttl.as_secs() as i64;
         let input_hash = trust_core::canonical_json::canonical_hash(&req.action.arguments);
 
+        let (contract_id, contract_hash) = if let Some(ctx) = req
+            .contract_context
+            .as_ref()
+            .or(req.action.contract_context.as_ref())
+        {
+            let cid = ctx
+                .get("contract_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let chash = ctx
+                .get("contract_hash")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            (cid, chash)
+        } else {
+            (None, None)
+        };
+
         let grant = ExecutionGrant {
             grant_id: grant_id.clone(),
             action_id: req.action_id.clone(),
@@ -79,6 +97,8 @@ impl Ed25519GrantIssuer {
             expires_at,
             kid: Some(self.kid.clone()),
             input_hash,
+            contract_id,
+            contract_hash,
             ..Default::default()
         };
 
@@ -143,6 +163,24 @@ impl HmacGrantIssuer {
         let expires_at = chrono::Utc::now().timestamp() + ttl.as_secs() as i64;
         let input_hash = trust_core::canonical_json::canonical_hash(&req.action.arguments);
 
+        let (contract_id, contract_hash) = if let Some(ctx) = req
+            .contract_context
+            .as_ref()
+            .or(req.action.contract_context.as_ref())
+        {
+            let cid = ctx
+                .get("contract_id")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            let chash = ctx
+                .get("contract_hash")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            (cid, chash)
+        } else {
+            (None, None)
+        };
+
         let grant = ExecutionGrant {
             grant_id: grant_id.clone(),
             action_id: req.action_id.clone(),
@@ -155,6 +193,8 @@ impl HmacGrantIssuer {
             expires_at,
             kid: None,
             input_hash,
+            contract_id,
+            contract_hash,
             ..Default::default()
         };
 
@@ -241,7 +281,9 @@ mod tests {
                 amount: None,
                 arguments: serde_json::json!({"summary": "Test Event"}),
                 tags: vec!["mutation".into()],
+                contract_context: None,
             },
+            contract_context: None,
         }
     }
 

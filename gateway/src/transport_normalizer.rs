@@ -38,6 +38,7 @@ pub fn normalize_http_propose(
         arguments: result.clean_args,
         identity: result.identity,
         raw_meta: result.raw_meta,
+        contract_context: None,
     })
 }
 
@@ -64,5 +65,6 @@ pub fn normalize_mcp_call(
         arguments: result.clean_args,
         identity: result.identity,
         raw_meta: result.raw_meta,
+        contract_context: None,
     })
 }

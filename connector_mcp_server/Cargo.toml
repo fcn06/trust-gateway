@@ -9,6 +9,7 @@ identity_context = { path = "../shared_libs/identity_context" }
 # Domain types and grant validation
 trust_core = { path = "../shared_libs/trust_core" }
 tenant_context = { path = "../platform/tenant_context" }
+trust_contract = { package = "trust-contract", path = "../crates/trust-contract" }
 # JWT validation (RULE[010_JWT_CONTRACTS.md])
 jwt-simple = { version = "0.12", default-features = false, features = ["pure-rust"] }
 axum = "0.8"

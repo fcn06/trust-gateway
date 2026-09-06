@@ -39,6 +39,20 @@
         }
       ]
     },
+    "contract_hash": {
+      "description": "B2B Negotiated Interaction Contract SHA-256 fingerprint.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract_id": {
+      "description": "B2B Negotiated Interaction Contract ID (if action is contract-governed).",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "delegation": {
       "description": "Bounded delegation model metadata.",
       "anyOf": [

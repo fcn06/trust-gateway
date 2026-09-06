@@ -50,6 +50,8 @@ impl GrantIssuer {
             issuer: issuer.to_string(),
             expires_at: now + ttl_seconds,
             nonce,
+            contract_id: None,
+            contract_hash: None,
         }
     }
 }

@@ -86,7 +86,9 @@ pub async fn webhook_post_handler(
             amount: None,
             arguments: payload.clone(),
             tags: vec![provider.clone(), "webhook".to_string()],
+            contract_context: None,
         },
+        contract_context: None,
     };
 
     // 3. Evaluate Policy

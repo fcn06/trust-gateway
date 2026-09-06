@@ -32,6 +32,7 @@
 pub mod api;
 pub mod app_registry;
 pub mod auth;
+pub mod contract_verifier;
 pub mod gateway;
 pub mod ucan_api;
 
@@ -45,7 +46,7 @@ mod approval_store;
 mod audit_projector;
 mod audit_sink;
 pub mod cron_scheduler;
-mod grant;
+pub mod grant;
 mod mcp_sse;
 mod meta_identity;
 mod normalizer;

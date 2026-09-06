@@ -65,6 +65,8 @@ pub struct ProposedAction {
     pub operation_attributes: OperationAttributes,
     pub arguments: serde_json::Value,
     pub timestamp: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_context: Option<serde_json::Value>,
 }
 
 /// Policy evaluation outcome
@@ -90,6 +92,10 @@ pub struct ExecutionGrant {
     pub issuer: String,
     pub expires_at: i64,
     pub nonce: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub contract_hash: Option<String>,
 }
 
 impl ExecutionGrant {

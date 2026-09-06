@@ -773,6 +773,7 @@ async fn propose_action_handler(
                 arguments: arguments.clone(),
                 identity,
                 raw_meta: None,
+                contract_context: req.contract_context.clone(),
             }
         });
 

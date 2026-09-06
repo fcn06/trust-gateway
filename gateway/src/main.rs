@@ -27,6 +27,7 @@ mod approval_daemon;
 mod approval_http;
 mod approval_store;
 pub mod auth;
+pub mod contract_verifier;
 mod cron_scheduler;
 mod mcp_sse;
 mod meta_identity;
@@ -612,11 +613,18 @@ async fn main() -> Result<()> {
         let _ = restore_app_registry.restore_from_kv().await;
     });
 
+    let contract_store: Arc<dyn trust_contract::ContractStore> =
+        Arc::new(trust_contract::InMemoryContractStore::new());
+    let contract_verifier = Arc::new(crate::contract_verifier::DefaultContractVerifier::new(
+        contract_store.clone(),
+    ));
+
     let state = Arc::new(GatewayState {
         security: gateway::SecurityState {
             policy_engine: Arc::new(policy_engine),
             grant_issuer,
             audit_sink,
+            contract_verifier: Some(contract_verifier),
         },
         connectors: gateway::ConnectorConfig {
             connector_mcp_url: args.connector_mcp_url.clone(),

@@ -110,7 +110,9 @@ async fn dispatch_cron_action(
             amount: None,
             arguments: serde_json::json!({}),
             tags: vec!["cron".to_string()],
+            contract_context: None,
         },
+        contract_context: None,
     };
 
     match crate::gateway::process_action(state.clone(), action_req).await {

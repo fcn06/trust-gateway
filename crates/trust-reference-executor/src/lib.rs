@@ -125,6 +125,8 @@ mod tests {
             issuer: "issuer-1".to_string(),
             expires_at: 9999999999,
             nonce: "nonce-1".to_string(),
+            contract_id: None,
+            contract_hash: None,
         }
     }
 

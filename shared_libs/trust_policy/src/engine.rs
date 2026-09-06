@@ -200,7 +200,9 @@ mod tests {
                 amount,
                 arguments: serde_json::json!({}),
                 tags,
+                contract_context: None,
             },
+            contract_context: None,
         }
     }
 

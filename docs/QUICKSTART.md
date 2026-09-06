@@ -14,7 +14,7 @@ cargo run -p quickstart-standalone
 
 ### 1. Rust Toolchain (Required)
 
-Install Rust 1.88+ via [rustup](https://www.rust-lang.org/tools/install):
+Install Rust 1.89+ via [rustup](https://www.rust-lang.org/tools/install):
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh

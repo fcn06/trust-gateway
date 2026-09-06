@@ -1,5 +1,5 @@
 # Stage 1: Build static musl binary for standalone quickstart demo
-FROM rust:1.88-slim-bookworm AS builder
+FROM rust:1.89-slim-bookworm AS builder
 
 WORKDIR /usr/src/trust-gateway
 

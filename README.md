@@ -140,14 +140,14 @@ cargo run -p quickstart-standalone
 ```
 ---
 
-## 📜 Protocol vs. Reference Implementation
+## 📜 Protocol Sketch vs. Implementation
 
-The **Execution Authorization Protocol** defines normative authorization contracts independent of specific runtime components:
+This project defines a working set of authorization contracts, independent in principle of any specific runtime:
 * **Normative Schemas**: `ProposedAction`, `PolicyDecision`, `ExecutionGrant`, `GrantedAction`, `ExecutionResult`.
 * **Canonicalization & Hashing**: Deterministic canonical JSON serialization with lexicographically sorted object keys followed by SHA-256 hashing (`input_hash`).
-* **Verification Rules**: Ed25519 public key signature verification, single-use nonce checking (`jti`), and strict TTL expiration.
+* **Verification Rules**: Ed25519 public key signature verification, nonce (`jti`) tracking intended to make grant reuse hard, and strict TTL expiration. (Verified, race-free single-use enforcement across every distributed executor topology is a design goal, not yet a proven guarantee — see the whitepaper.)
 
-This repository provides the official **Rust reference implementation** and a **Python SDK**.
+This repository is the only implementation right now — mine, in Rust — plus a Python SDK. "Protocol" here describes an internal design, not an externally reviewed or adopted specification.
 
 ---
 
@@ -159,7 +159,7 @@ As enterprises deploy autonomous agents that interact across corporate boundarie
 
 The **B2B Agent pattern** solves this by establishing a strict dual-plane separation:
 1. **Semantic Plane (Probabilistic)**: External and internal agents communicate over agent protocols (such as A2A, MCP, or DIDComm) to discover capabilities and negotiate mutual terms.
-2. **Control Plane (Deterministic)**: The **Trust Gateway** acts as the un-bypassable gatekeeper. It holds all downstream credentials and evaluates every proposed action against machine-enforceable **Interaction Contracts** and enterprise policy.
+2. **Control Plane (Deterministic)**: The **Trust Gateway** is designed to be the sole path to execution — it holds all downstream credentials and evaluates every proposed action against machine-enforceable **Interaction Contracts** and enterprise policy.
 
 ```text
 External B2B Agent  <── negotiation ──>  Enterprise B2B Agent
@@ -179,7 +179,7 @@ External B2B Agent  <── negotiation ──>  Enterprise B2B Agent
 
 ### 📄 Read the Whitepaper
 
-For the full architectural specification, formal threat model, and implementation status, read the technical whitepaper:
+For the full architecture, threat model, and an honest accounting of what's implemented versus still a design goal, read the technical whitepaper:
 
 👉 **[Interaction Contracts for Autonomous B2B Agents: Architecture, Threat Model, and Open Questions](whitepaper/b2b_agent_whitepaper.md)**
 
@@ -187,8 +187,8 @@ Key topics covered in the whitepaper:
 - **Negotiated Interaction Contracts (NICP)**: Canonicalization (RFC 8785 JCS), contract lifecycle, and mutual cryptographic attestation.
 - **The Effective Authority Invariant**: `effective_authority = contract ∩ enterprise_policy ∩ identity_delegation`.
 - **Stateful Authorization & Cumulative Risk**: Sliding-window velocity limits and multi-request exposure guards.
-- **Semantic Verification Pipeline**: Compiling and freezing schema mappings into content-addressed sandboxed WebAssembly bytecode rather than relying on live LLM translation.
-- **Audit Trails & Dispute Resolution**: Append-only sealed receipts linking grants, contracts, input/output digests, and non-repudiable signatures.
+- **Semantic Verification Pipeline (design goal — partially prototyped)**: the target is compiling and freezing schema mappings into content-addressed, sandboxed WebAssembly bytecode rather than relying on live LLM translation at transaction time.
+- **Audit Trails & Dispute Resolution**: Append-only sealed receipts linking grants, contracts, input/output digests, and signatures — intended to support non-repudiation and dispute resolution, though this hasn't yet been exercised against a real disputed-transaction scenario.
 
 ---
 ## 📖 Explore the Documentation
